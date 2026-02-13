@@ -54,3 +54,71 @@ response = chain.invoke(input={"information": information})
 
 # 6. Output
 print(response.content)
+
+```
+
+## 3. Technical Deep Dive
+
+### A. `PromptTemplate` vs. `ChatPromptTemplate`
+
+This is the most critical distinction in modern LLM development.
+
+| Feature | `PromptTemplate` | `ChatPromptTemplate` |
+| --- | --- | --- |
+| **Input Type** | A single raw string. | A list of `Message` objects (System, Human, AI). |
+| **Structure** | Unstructured text. | Structured roles. |
+| **Use Case** | Simple completion tasks; legacy models. | **Production Standard.** Chatbots, complex reasoning, agents. |
+
+* **`ChatPromptTemplate` Mechanics:**
+* **System Message:** Sets the behavior/persona (e.g., "You are a helpful assistant"). This instruction persists even as the conversation grows.
+* **Human Message:** The user's input (e.g., the `{information}` variable).
+* **AI Message:** The model's response.
+
+
+
+### B. The `ChatOpenAI` Model Wrapper
+
+* **Definition:** A class that standardizes the API connection to OpenAI.
+* **Key Behavior:** Unlike older models that accepted a string and returned a string, `ChatOpenAI` expects a list of messages and returns an `AIMessage` object.
+* **`temperature=0`:** A hyperparameter that controls randomness. Setting it to 0 forces the model to select the highest-probability token at every step, making the output **deterministic** (repeatable).
+
+### C. LCEL (LangChain Expression Language)
+
+* **Definition:** A declarative coding style for composing chains using the pipe operator (`|`).
+* **Syntax:** `chain = prompt | model | output_parser`
+* **Data Flow:**
+1. **Input Dictionary:** `{"information": "..."}`
+2. **Prompt:** Receives dictionary  Returns `PromptValue` (formatted string or messages).
+3. **Model:** Receives `PromptValue`  Returns `AIMessage`.
+
+
+* **Why it matters:** It abstracts the data passing. You don't need to manually take the string from step 1 and pass it to function 2. The `|` operator handles the handshake automatically.
+
+### D. `AIMessage`
+
+* **Definition:** The structured response object from a Chat Model.
+* **Attributes:**
+* `.content`: The actual text of the response.
+* `.response_metadata`: Usage statistics (input tokens, output tokens, total cost).
+
+
+
+---
+
+## 4. Interview Q&A Anchors
+
+**Q: When should I use `ChatPromptTemplate` over `PromptTemplate`?**
+
+> **A:** You should almost always use `ChatPromptTemplate` when working with modern Chat Models. These models are trained to understand the distinction between a "System Instruction" and a "User Message," making prompts more robust and secure.
+
+**Q: Explain the data flow in the LCEL chain `prompt | model`.**
+
+> **A:** The `.invoke()` method passes a dictionary to the `prompt`. The `prompt` formats this into a `String` (or `List[Message]`) and passes it to the `model`. The `model` processes it and returns an `AIMessage` object.
+
+**Q: Why is `temperature=0` important for this specific task (summarization)?**
+
+> **A:** Summarization is a factual extraction task. We want the model to be faithful to the source text. Higher temperatures introduce randomness, which increases the risk of "hallucination." Temperature 0 minimizes this risk.
+
+```
+
+```
