@@ -129,7 +129,3 @@ This is the most critical distinction in modern LLM development.
 **Q: Why is `temperature=0` important for this specific task (summarization)?**
 
 > **A:** Summarization is a factual extraction task. We want the model to be faithful to the source text. Higher temperatures introduce randomness, which increases the risk of "hallucination." Temperature 0 minimizes this risk.
-
-```
-
-```
