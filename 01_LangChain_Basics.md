@@ -5,11 +5,12 @@ This module covers the fundamental building block of LangChain: creating a linea
 We use **Declarative Orchestration (LCEL)** to link a **Prompt Template** (the instructions) with a **Chat Model** (the intelligence).
 
 ## 2. Code Implementation
-*This script demonstrates two approaches: Standard `PromptTemplate` (String-based) and `ChatPromptTemplate` (Message-based).*
+*This script demonstrates two approaches: Standard `PromptTemplate` (String-based) and `ChatPromptTemplate` (Message-based), plus how to switch between Paid (OpenAI) and Free (Ollama) models.*
 
 ```python
 from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 # 1. Load Environment Variables
@@ -52,9 +53,13 @@ chat_template = ChatPromptTemplate.from_messages([
     ("human", "{information}")
 ])
 
-# 3. The Model (LLM Wrapper)
-# temperature=0 ensures deterministic output (critical for factual extraction).
+# 3. The Model Switcher (Cost vs. Performance)
+# OPTION A: Paid Cloud Model (High Intelligence, Costs Money)
 llm = ChatOpenAI(temperature=0, model="gpt-4o")
+
+# OPTION B: Free Local Model (Zero Cost, Runs on your laptop)
+# Requires Ollama installed (e.g., 'ollama run gemma2')
+# llm = ChatOllama(temperature=0, model="gemma2:2b")
 
 # 4. The Chain (LCEL Syntax)
 # We pipe the specific template into the model.
@@ -87,11 +92,11 @@ This is the most critical distinction in modern LLM development.
 
 
 
-### B. The `ChatOpenAI` Model Wrapper
+### B. The `ChatOpenAI` vs. `ChatOllama` (Model Agnosticism)
 
-* **Definition:** A class that standardizes the API connection to OpenAI.
-* **Key Behavior:** Unlike older models that accepted a string and returned a string, `ChatOpenAI` expects a list of messages and returns an `AIMessage` object.
-* **`temperature=0`:** A hyperparameter that controls randomness. Setting it to 0 forces the model to select the highest-probability token at every step, making the output **deterministic** (repeatable).
+* **ChatOpenAI:** Connects to OpenAI's API. High cost, high intelligence.
+* **ChatOllama:** Connects to a local model running on your machine (via Ollama). Zero cost, data privacy, but requires local hardware.
+* **The Concept:** LangChain allows you to swap these lines of code without changing your chain logic. This is called **Model Agnosticism**.
 
 ### C. LCEL (LangChain Expression Language)
 
@@ -112,8 +117,6 @@ This is the most critical distinction in modern LLM development.
 * `.content`: The actual text of the response.
 * `.response_metadata`: Usage statistics (input tokens, output tokens, total cost).
 
-
-
 ---
 
 ## 4. Interview Q&A Anchors
@@ -129,3 +132,7 @@ This is the most critical distinction in modern LLM development.
 **Q: Why is `temperature=0` important for this specific task (summarization)?**
 
 > **A:** Summarization is a factual extraction task. We want the model to be faithful to the source text. Higher temperatures introduce randomness, which increases the risk of "hallucination." Temperature 0 minimizes this risk.
+
+**Q: How would you architect a system to save costs on simple queries?**
+
+> **A:** I would use a "Model Routing" strategy. For complex reasoning, I would route the request to a paid model like GPT-4. For simple tasks (like summarization), I would route it to a free local model (like Llama3 via Ollama) to save credits, as demonstrated in the code above.
