@@ -11,6 +11,12 @@ This repository documents my journey mastering LangChain for production-grade AI
 | [02. Chat Model Architecture](./02_Chat_Models_Architecture.md) | Deep dive into Message Roles, Statelessness, and the "Context Window". | `SystemMessage`, `HumanMessage`, `AIMessage` |
 | [03. LangSmith Tracing](./03_LangSmith_Tracing.md) | Debugging, Observability, and Latency tracking for LLM applications. | `LANGCHAIN_TRACING_V2`, `Callbacks` |
 
+## 📖 Reference Guides
+
+| Guide | Description | 
+| :--- | :--- | 
+| [Python OOP for C#/Java Devs](./Python_to_CSharp_Glossary.md) | Translates LangChain's Python architecture (kwargs, operator overloading, factory methods) into strict C#/Java OOP terminology. |
+
 ## 🛠️ Tech Stack
 - **Python** (Managed via `uv`)
 - **LangChain**
