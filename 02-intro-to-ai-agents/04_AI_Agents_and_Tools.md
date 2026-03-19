@@ -19,8 +19,8 @@ uv add langchain langchain-openai langchain-community tavily-python pydantic pyt
 ## 1. Core Architectural Concepts
 
 ### Chains vs. Agents
-* **Chains (Deterministic):** A linear pipeline (`Prompt -> LLM -> OutputParser`). If the user asks a complex question that requires multiple steps or dynamic routing, the chain breaks because its path is hardcoded.
-* **Agents (Non-Deterministic):** An autonomous reasoning system. The LLM acts as the "Brain" and is given a toolbox of Python functions ("Hands"). It operates in a dynamic `while` loop, deciding on the fly which tools to use, what parameters to pass them, and when it has enough information to stop.
+* **Chains (Hard-Coded):** Simple workflows where the sequence of actions is strictly hard-coded (`Prompt -> LLM -> OutputParser`). 
+* **Agents (Dynamic):** A software system that uses LLMs as a reasoning engine to decide what actions to take, and then execute those actions. Unlike chains, agents dynamically determine which tools or steps need to be taken to solve a specific task or answer specific questions. **The important thing to note here is that the LLM in an agent is deciding what to do next.**
 
 ### The ReAct Framework (Reasoning + Acting)
 LangChain Agents utilize a prompting strategy called **ReAct**. It forces the LLM to think in a strict, observable loop:
@@ -29,6 +29,10 @@ LangChain Agents utilize a prompting strategy called **ReAct**. It forces the LL
 3. **Action Input:** The LLM generates the arguments for the tool. *(e.g., `query="AI Engineer Texas"`)*
 4. **Observation:** The `AgentExecutor` runs the tool locally and returns the result to the LLM.
 5. **Final Answer:** The LLM determines if the observation answers the user's prompt. If yes, it breaks the loop. If no, it starts a new Thought.
+
+### C#/Java Analogy
+* A **Chain** is a standard procedural method: `var result = Step3(Step2(Step1(input)));`
+* A **ReAct Agent** is a **State Machine** running inside a `while` loop. It dynamically instantiates `ICommand` interfaces based on state evaluation, executes them, and reads the return values to determine its next move.
 
 ---
 
