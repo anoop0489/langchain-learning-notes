@@ -12,10 +12,10 @@ The foundational concepts of LangChain, LCEL, and observability.
 * [02. Chat Model Architecture (Message Roles, Statelessness)](./01-langchain-fundamentals/02_Chat_Models_Architecture.md)
 * [03. LangSmith Tracing & Observability](./01-langchain-fundamentals/03_LangSmith_Tracing.md)
 
-### 2. The ReAct Agent Architecture 🤖
-*Folder: [`/02-react-langchain`](./02-react-langchain)*
+### 2. Intro to AI Agents (The ReAct Architecture) 🤖
+*Folder: [`/02-intro-to-ai-agents`](./02-intro-to-ai-agents)*
 Moving from linear chains to autonomous AI Agents that can "think" and use tools.
-* [04. AI Agents, Tools & Structured Output (Pydantic)](./02-react-langchain/04_AI_Agents_and_Tools.md)
+* [04. AI Agents, Tools & Structured Output (Pydantic)](./02-intro-to-ai-agents/04_AI_Agents_and_Tools.md)
 
 ### 3. Vector Databases & Retrieval 📚
 *Folder: `/03-vector-dbs`*
