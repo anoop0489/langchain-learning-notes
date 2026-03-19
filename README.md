@@ -46,3 +46,8 @@ Moving from linear chains to autonomous AI Agents that can "think" and use tools
 
 ---
 *Created as part of my preparation for Senior AI Engineer roles.*
+
+### ⚖️ Disclaimer
+* **Personal Project:** This repository is a personal portfolio and learning sandbox. The opinions, code, and architectural patterns expressed here are strictly my own and do not reflect the views, policies, or intellectual property of my current or former employers.
+* **Educational Use Only:** The code provided in this repository is for educational and demonstrative purposes. It is not intended for production use without further security, scaling, and testing audits.
+* **Liability:** All code and notes are provided "as-is" without warranty of any kind. I assume no liability for any direct or indirect damages, data loss, or system failures resulting from the use of this material.
