@@ -12,21 +12,26 @@ The foundational concepts of LangChain, LCEL, and observability.
 * [02. Chat Model Architecture (Message Roles, Statelessness)](./01-langchain-fundamentals/02_Chat_Models_Architecture.md)
 * [03. LangSmith Tracing & Observability](./01-langchain-fundamentals/03_LangSmith_Tracing.md)
 
-### 2. Intro to AI Agents (The ReAct Architecture) 🤖
+### 2. Intro to AI Agents 🤖
 *Folder: [`/02-intro-to-ai-agents`](./02-intro-to-ai-agents)*
 Moving from linear chains to autonomous AI Agents that can "think" and use tools.
 * [04. AI Agents, Tools & Structured Output (Pydantic)](./02-intro-to-ai-agents/04_AI_Agents_and_Tools.md)
 
-### 3. Vector Databases & Retrieval 📚
-*Folder: `/03-vector-dbs`*
+### 3. Agents Under The Hood 🕵️‍♂️
+*Folder: [`/04-agents-under-the-hood`](./04-agents-under-the-hood)*
+Peeling back LangChain's abstractions to understand the raw ReACT loop, state machines, and local LLM execution.
+* [05. The ReACT Architecture & Local LLMs](./04-agents-under-the-hood/05_ReACT_Architecture.md)
+
+### 4. Vector Databases & Retrieval 📚
+*Folder: `/05-vector-dbs`*
 * *(Coming Soon: Embeddings, Vector Stores, Pinecone, FAISS)*
 
-### 4. RAG Applications (Retrieval-Augmented Generation) 🔍
-*Folder: `/04-documentation-helper`*
+### 5. RAG Applications (Retrieval-Augmented Generation) 🔍
+*Folder: `/06-documentation-helper`*
 * *(Coming Soon: Building a chatbot over Python package docs using advanced RAG and Streamlit)*
 
-### 5. LangGraph & Advanced Flow Engineering 🕸️
-*Folders: `/05-langgraph-course`*
+### 6. LangGraph & Advanced Flow Engineering 🕸️
+*Folders: `/07-langgraph-course`*
 * *(Coming Soon: Moving from basic AgentExecutors to complex, stateful graph architectures)*
 
 ---
