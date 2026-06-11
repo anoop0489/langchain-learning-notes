@@ -74,7 +74,7 @@ When Branch A is taken, the LLM temporarily pauses execution and returns control
 Because large language models are fundamentally stateless, they do not naturally remember past operations within an agent cycle. The ReACT paradigm overcomes this limitation via the **Agent Scratchpad**. By appending every single thought, chosen tool call, and corresponding tool output back into the system prompt sequentially, the next loop's "Thought" phase is statistically conditioned on the entire history of actions. This creates a functional, highly predictable state machine.
 
 ### Core Conceptual Diagram: ReAct Logic
-![ReAct Logic and Iteration Flow](./react_diagram.jpg)
+![ReAct Logic and Iteration Flow](./assets/react_diagram.jpg)
 * **Thought:** The LLM analyzes the current state and reasons about what to do.
 * **Action:** The LLM outputs a command to execute a specific tool (or returns a final answer).
 * **Observation:** Your backend application code executes the tool and returns the raw result back to the LLM.
