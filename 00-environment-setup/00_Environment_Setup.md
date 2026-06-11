@@ -15,6 +15,21 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```
 *(Note: Close and reopen your terminal/Visual Studio after installation to ensure the `uv` command is recognized).*
 
+### Per-Module Packages
+
+Each module adds its own dependencies. Here's the full list across the course:
+
+| Module | Command |
+| :--- | :--- |
+| **01 - Fundamentals** | `uv add langchain langchain-openai python-dotenv` |
+| **03 - LangSmith** | `uv add langsmith` |
+| **04 - Agents Under the Hood** | `uv add langchain langchain-ollama langchain-openai python-dotenv black isort` |
+
+Or install everything at once:
+```bash
+uv add langchain langchain-openai langchain-ollama langsmith python-dotenv black isort
+```
+
 ---
 
 ## 1. Core Architectural Concepts
@@ -45,6 +60,65 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 * **What it is:** A lightweight package that reads key-value pairs from a local `.env` file and pushes them into Python's OS environment variables.
 * **Why we use it:** To prevent hardcoding highly sensitive API keys (like `OPENAI_API_KEY`) directly into source code, which would expose them if pushed to GitHub.
 * **C# Analogy:** This is the Python equivalent of using **`appsettings.Development.json`** combined with the `.NET Secret Manager` during local debugging.
+
+---
+
+## 🔑 Environment Variables & API Keys
+
+All secrets are stored in a single `.env` file at the project root. A template is provided as `.env.example`.
+
+```bash
+# Copy the template
+cp .env.example .env
+```
+
+Then fill in your actual keys:
+
+| Variable | Where to Get It | Used By |
+| :--- | :--- | :--- |
+| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | All modules (GPT-4o) |
+| `LANGCHAIN_API_KEY` | [smith.langchain.com](https://smith.langchain.com/) → Settings → API Keys | LangSmith tracing |
+| `LANGCHAIN_TRACING_V2` | Set to `true` to enable tracing | LangSmith tracing |
+| `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) → Dashboard → API Keys | Agent search tool |
+
+**Sample `.env` file:**
+```text
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_xxxxxxxxxxxxxxxxxxxxxxxx
+TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> ⚠️ **Never commit `.env` to Git.** It is already in `.gitignore`.
+
+---
+
+## 🦙 Ollama (Local LLM Setup)
+
+Starting from Module 04, we use **Ollama** to run open-weights models locally (free, no API costs).
+
+### Installation
+Download from [ollama.com/download](https://ollama.com/download) and install.
+
+### Pull a Model
+```bash
+# Lightweight model with tool-calling support (used in Module 04)
+ollama pull qwen3:1.7b
+```
+
+### Start the Local Server
+```bash
+ollama serve
+```
+*(Leave this terminal open. Your Python code connects to `localhost:11434`.)*
+
+### Verify
+```bash
+ollama run qwen3:1.7b
+# Type "Hi" to test, then "/bye" to exit
+```
+
+**C# Analogy:** Think of Ollama as **Docker Desktop for LLMs**. You "pull" a model image and "run" it, exposing a local REST API that LangChain can talk to.
 
 ---
 
