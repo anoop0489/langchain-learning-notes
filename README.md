@@ -4,36 +4,36 @@ This repository documents my journey mastering LangChain, LangGraph, and Agentic
 
 ## 🗂️ Project Modules (Course Roadmap)
 
-### 1. Fundamentals & Ice Breaker 🧊
-*Folder: [`/01-langchain-fundamentals`](./01-langchain-fundamentals)*
+### Section 1: Introduction 🚀
+*Folder: [`/01-introduction`](./01-introduction)*
+Environment setup, tooling, and project initialization.
+* [00. Environment Setup (`uv`, `.env`, API Keys, Ollama)](./01-introduction/00_Environment_Setup.md)
+
+### Section 2: The GIST of LangChain 🧊
+*Folder: [`/02-gist-of-langchain`](./02-gist-of-langchain)*
 The foundational concepts of LangChain, LCEL, and observability.
-* [00. Environment Setup (`uv`, `.env`)](./00-environment-setup/00_Environment_Setup.md)
-* [01. Fundamentals & LCEL (PromptTemplates, Model Switching)](./01-langchain-fundamentals/01_LangChain_Fundamentals.md)
-* [02. Chat Model Architecture (Message Roles, Statelessness)](./01-langchain-fundamentals/02_Chat_Models_Architecture.md)
-* [03. LangSmith Tracing & Observability](./01-langchain-fundamentals/03_LangSmith_Tracing.md)
+* [01. Fundamentals & LCEL (PromptTemplates, Model Switching)](./02-gist-of-langchain/01_LangChain_Fundamentals.md)
+* [02. Chat Model Architecture (Message Roles, Statelessness)](./02-gist-of-langchain/02_Chat_Models_Architecture.md)
+* [03. LangSmith Tracing & Observability](./02-gist-of-langchain/03_LangSmith_Tracing.md)
 
-### 2. Intro to AI Agents 🤖
-*Folder: [`/02-intro-to-ai-agents`](./02-intro-to-ai-agents)*
+### Section 3: The GIST of AI Agents 🤖
+*Folder: [`/03-gist-of-ai-agents`](./03-gist-of-ai-agents)*
 Moving from linear chains to autonomous AI Agents that can "think" and use tools.
-* [04. AI Agents, Tools & Structured Output (Pydantic)](./02-intro-to-ai-agents/04_AI_Agents_and_Tools.md)
+* [04. AI Agents, Tools & Structured Output (Pydantic)](./03-gist-of-ai-agents/04_AI_Agents_and_Tools.md)
 
-### 3. Agents Under The Hood 🕵️‍♂️
-*Folder: [`/04-agents-under-the-hood`](./04-agents-under-the-hood)*
-Peeling back LangChain's abstractions to understand the raw ReACT loop, state machines, and local LLM execution.
-* [05. The ReACT Architecture & Local LLMs](./04-agents-under-the-hood/05_ReACT_Architecture.md)
-* [06. Agents Under the Hood - Tool Calling & Raw Loops](./04-agents-under-the-hood/06_Agents_Under_The_Hood.md)
+### Sections 4–7: Agents Under The Hood 🕵️‍♂️
+*Folder: [`/04-07-agents-under-the-hood`](./04-07-agents-under-the-hood)*
+Peeling back LangChain's abstractions layer by layer — from framework magic to raw regex.
+* [05. The ReACT Architecture & Local LLMs](./04-07-agents-under-the-hood/05_ReACT_Architecture.md) *(Section 4)*
+* [06. Agents Under the Hood - Tool Calling & Raw Loops](./04-07-agents-under-the-hood/06_Agents_Under_The_Hood.md) *(Sections 5–7)*
 
-### 4. Vector Databases & Retrieval 📚
-*Folder: `/05-vector-dbs`*
-* *(Coming Soon: Embeddings, Vector Stores, Pinecone, FAISS)*
+### Section 8: Function Calling 🔧
+*Folder: `/08-function-calling`*
+* *(Coming Soon)*
 
-### 5. RAG Applications (Retrieval-Augmented Generation) 🔍
-*Folder: `/06-documentation-helper`*
-* *(Coming Soon: Building a chatbot over Python package docs using advanced RAG and Streamlit)*
-
-### 6. LangGraph & Advanced Flow Engineering 🕸️
-*Folders: `/07-langgraph-course`*
-* *(Coming Soon: Moving from basic AgentExecutors to complex, stateful graph architectures)*
+### Section 9: The GIST of RAG 📚
+*Folder: `/09-gist-of-rag`*
+* *(Coming Soon: Embeddings, Vector Databases, & Retrieval)*
 
 ---
 
