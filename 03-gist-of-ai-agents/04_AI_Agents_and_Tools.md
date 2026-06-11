@@ -1,6 +1,6 @@
 ﻿# 04. The GIST of AI Agents & Structured Output 🤖
 
-*Based on Section 3: The GIST Of AI Agents (Lectures 15 - 24)*
+*Based on Section 3: The GIST Of AI Agents (Lectures 15 - 23)*
 
 ## 🎯 What You Will Learn
 * The shift from deterministic chains to autonomous ReAct agents.
