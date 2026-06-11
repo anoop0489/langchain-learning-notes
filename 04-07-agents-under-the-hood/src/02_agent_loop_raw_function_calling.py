@@ -43,7 +43,7 @@ def apply_discount(price: float, discount_tier: str) -> float:
 # PART 2: HAND-WRITTEN JSON TOOL SCHEMAS
 # ==========================================
 
-# Difference 2: Without @tool, we must MANUALLY define the JSON schema for each function.
+# DIFFERENCE 2: Without @tool, we must MANUALLY define the JSON schema for each function.
 # This is exactly what LangChain's @tool decorator generates automatically
 # from the function's type hints and docstring.
 # Think of this like writing a Swagger/OpenAPI spec manually instead of using [ApiController].
@@ -107,7 +107,7 @@ tools_for_llm = [
 # ==========================================
 
 # --- Helper: traced Ollama call ---
-# Difference 3: Without LangChain, we must manually trace LLM calls for LangSmith.
+# DIFFERENCE 3: Without LangChain, we must manually trace LLM calls for LangSmith.
 # In File 01, LangChain handles tracing automatically when you use init_chat_model().
 
 
@@ -162,7 +162,7 @@ def run_agent(question: str):
         print(f"\n--- Iteration {iteration} ---")
 
         # STEP A: Send the full message history to the LLM via Ollama SDK directly.
-        # Difference 5: ollama.chat() directly instead of llm_with_tools.invoke()
+        # DIFFERENCE 5: ollama.chat() directly instead of llm_with_tools.invoke()
         response = ollama_chat_traced(messages=messages)
         ai_message = response.message
 
@@ -176,7 +176,7 @@ def run_agent(question: str):
         # STEP C: Process the Tool Request
         # Process only the FIRST tool call — force one tool per iteration
         tool_call = tool_calls[0]
-        # Difference 6: Attribute access (.function.name) instead of dict access (.get("name"))
+        # DIFFERENCE 6: Attribute access (.function.name) instead of dict access (.get("name"))
         # because Ollama returns typed objects, not dicts like LangChain.
         tool_name = tool_call.function.name
         tool_args = tool_call.function.arguments
@@ -188,7 +188,7 @@ def run_agent(question: str):
         if tool_to_use is None:
             raise ValueError(f"Tool '{tool_name}' not found")
 
-        # Difference 7: Direct function call with **kwargs instead of tool.invoke(args)
+        # DIFFERENCE 7: Direct function call with **kwargs instead of tool.invoke(args)
         # In File 01: observation = tool_to_use.invoke(tool_args)
         # Here:       observation = tool_to_use(**tool_args)
         observation = tool_to_use(**tool_args)
@@ -216,5 +216,4 @@ def run_agent(question: str):
 if __name__ == "__main__":
     print("Hello Raw Function Calling Agent (No LangChain)!")
     print()
-    result = run_agent("What is the price of a laptop after applying a gold discount?")
     result = run_agent("What is the price of a laptop after applying a gold discount?")
