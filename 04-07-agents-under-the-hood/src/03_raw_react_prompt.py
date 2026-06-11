@@ -1,8 +1,11 @@
 # CHANGE 1: Add re + inspect — we'll parse tool calls from raw text instead of structured JSON.
+# re = Regular Expressions for parsing raw text output from the LLM.
+# inspect = Python's reflection module to read function signatures and docstrings at runtime.
 import re
 import inspect
 from dotenv import load_dotenv
 
+# 1. Load environment variables (like your LANGSMITH_API_KEY) from the .env file
 load_dotenv()
 
 import ollama
@@ -12,7 +15,14 @@ MAX_ITERATIONS = 10
 MODEL = "qwen3:1.7b"
 
 
-# --- Tools (LangChain @tool decorator) ---
+# ==========================================
+# PART 1: DEFINING THE TOOLS
+# ==========================================
+
+# KEY DIFFERENCE FROM FILES 01 & 02:
+# No @tool, no JSON schemas, no function calling API.
+# Tools are just plain Python functions. We describe them to the LLM
+# as plain text INSIDE the prompt itself (see PART 2 below).
 
 
 @traceable(run_type="tool")
@@ -33,15 +43,26 @@ def apply_discount(price: float, discount_tier: str) -> float:
     discount = discount_percentages.get(discount_tier, 0)
     return round(price * (1 - discount / 100), 2)
 
+# Tool registry — same Service Locator pattern as Files 01 & 02.
+# When we parse a tool name from the LLM's raw text, we look it up here.
 tools = {
     "get_product_price": get_product_price,
     "apply_discount": apply_discount,
 }
 
+
+# ==========================================
+# PART 2: THE ReAct PROMPT TEMPLATE
+# ==========================================
+
 # CHANGE 3: Delete the JSON schemas. Tools now live inside the prompt as plain text.
 # We derive descriptions from the functions themselves using inspect.
+# This is how agents worked BEFORE LLMs had built-in function calling (pre-June 2023).
 
 def get_tool_descriptions(tools_dict):
+    """Use Python's inspect module to auto-generate plain-text tool descriptions.
+    This replaces the hand-written JSON schemas from File 02.
+    The output looks like: get_product_price(product: str) -> float - Look up the price..."""
     descriptions = []
     for tool_name, tool_function in tools_dict.items():
         # __wrapped__ bypasses decorator wrappers (e.g., @traceable adds *, config=None)
@@ -54,6 +75,10 @@ def get_tool_descriptions(tools_dict):
 tool_descriptions = get_tool_descriptions(tools)
 tool_names = ", ".join(tools.keys())
 
+# The ReAct Prompt Template — this is the ENTIRE "brain" of the agent.
+# Instead of passing JSON tool schemas to the API, we describe everything in plain text.
+# The LLM must follow this strict format, and we parse its output with regex.
+# Based on the original ReAct paper: https://arxiv.org/abs/2210.03629
 react_prompt = f"""
 STRICT RULES — you must follow these exactly:
 1. NEVER guess or assume any product price. You MUST call get_product_price first to get the real price.
@@ -82,38 +107,39 @@ Question: {{question}}
 Thought:"""
 
 
-
+# ==========================================
+# PART 3: THE AGENT LOOP (THE STATE MACHINE)
+# ==========================================
 
 # CHANGE 4: Drop tools= from ollama.chat(). The LLM has no idea it's an agent —
 # all agency comes from the prompt above and our regex parsing below.
-
+# We just send a plain text prompt and get plain text back. No structured tool_calls.
 @traceable(name="Ollama Chat", run_type="llm")
 def ollama_chat_traced(model, messages, options):
     return ollama.chat(model=model, messages=messages, options=options)
 
 
-
-
-
-# --- Agent Loop ---
-
-
+# @traceable tells LangSmith to record everything that happens inside this function.
 @traceable(name="Ollama Agent Loop")
 def run_agent(question: str):
     print(f"Question: {question}")
     print("=" * 60)
 
-
     # CHANGE 5: One prompt string replaces the system/user message split.
+    # KEY DIFFERENCE: No messages array. No system/user roles.
+    # The entire context is one giant string that grows with each iteration.
     prompt = react_prompt.format(question=question)
-    scratchpad = "" 
+    scratchpad = ""
 
+    # START THE LOOP (Circuit Breaker pattern — cap at MAX_ITERATIONS)
     for iteration in range(1, MAX_ITERATIONS + 1):
         print(f"\n--- Iteration {iteration} ---")
         full_prompt = prompt + scratchpad
 
-        # Stop token prevents the LLM from generating its own Observation —
-        # we inject the real tool result instead.
+        # STEP A: Send the prompt + scratchpad to the LLM.
+        # The "stop" token is CRITICAL: it prevents the LLM from hallucinating
+        # its own Observation. We stop it right before "\nObservation" so WE can
+        # inject the real tool result instead of letting the LLM make one up.
         response = ollama_chat_traced(
             model=MODEL,
             messages=[{"role": "user", "content": full_prompt}],
@@ -122,6 +148,7 @@ def run_agent(question: str):
         output = response.message.content
         print(f"LLM Output:\n{output}")
 
+        # STEP B: Exit Condition — check if the LLM produced a "Final Answer:" line.
         print(f"  [Parsing] Looking for Final Answer in LLM output...")
         final_answer_match = re.search(r"Final Answer:\s*(.+)", output)
         if final_answer_match:
@@ -131,9 +158,10 @@ def run_agent(question: str):
             print(f"Final Answer: {final_answer}")
             return final_answer
 
-
-
+        # STEP C: Parse the tool call from raw text using regex.
         # CHANGE 6: Parse tool calls from raw text with regex — fragile if LLM doesn't follow format.
+        # In Files 01 & 02, we read structured tool_calls from the API response.
+        # Here, we literally regex the LLM's text output. If it deviates from the format, we break.
         print(f"  [Parsing] Looking for Action and Action Input in LLM output...")
 
         action_match = re.search(r"Action:\s*(.+)", output)
@@ -172,6 +200,6 @@ def run_agent(question: str):
 
 
 if __name__ == "__main__":
-    print("Hello LangChain Agent (.bind_tools)!")
+    print("Hello Raw ReAct Prompt Agent (No Function Calling, No LangChain)!")
     print()
     result = run_agent("What is the price of a laptop after applying a gold discount?")
