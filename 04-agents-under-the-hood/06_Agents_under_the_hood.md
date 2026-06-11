@@ -96,7 +96,7 @@ What changes across the three files is **how** each step is implemented:
 ## Implementations
 
 ### 1. LangChain Tool Calling
-**File:** [`1_agent_loop_langchain_tool_calling.py`](./src/1_agent_loop_langchain_tool_calling.py)
+**File:** [`01_agent_loop_langchain_tool_calling.py`](./src/01_agent_loop_langchain_tool_calling.py)
 
 We start here — this is how you'd normally build an agent. Reading through the code top to bottom:
 
@@ -118,7 +118,7 @@ It just works. But what's actually happening underneath all these abstractions?
 ---
 
 ### 2. Raw Function Calling (No LangChain)
-**File:** [`2_agent_loop_raw_function_calling.py`](./src/2_agent_loop_raw_function_calling.py)
+**File:** [`02_agent_loop_raw_function_calling.py`](./src/02_agent_loop_raw_function_calling.py)
 
 Now we peel off LangChain and build the exact same agent using only the `ollama` Python SDK. Compare with file 1 side-by-side to see what LangChain was doing for you. Reading top to bottom:
 
@@ -139,7 +139,7 @@ Now we peel off LangChain and build the exact same agent using only the `ollama`
 ---
 
 ### 3. Raw ReAct Prompt (No Function Calling, No LangChain)
-**File:** [`3_raw_react_prompt.py`](./src/3_raw_react_prompt.py)
+**File:** [`03_raw_react_prompt.py`](./src/03_raw_react_prompt.py)
 
 Now we peel off function calling itself. This is how agents worked **before LLMs had built-in tool calling** (pre-June 2023). No structured `tool_calls` in the API response — the LLM just outputs raw text, and we parse it with regex. Reading top to bottom:
 

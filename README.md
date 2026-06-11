@@ -21,6 +21,7 @@ Moving from linear chains to autonomous AI Agents that can "think" and use tools
 *Folder: [`/04-agents-under-the-hood`](./04-agents-under-the-hood)*
 Peeling back LangChain's abstractions to understand the raw ReACT loop, state machines, and local LLM execution.
 * [05. The ReACT Architecture & Local LLMs](./04-agents-under-the-hood/05_ReACT_Architecture.md)
+* [06. Agents Under the Hood - Tool Calling & Raw Loops](./04-agents-under-the-hood/06_Agents_Under_The_Hood.md)
 
 ### 4. Vector Databases & Retrieval 📚
 *Folder: `/05-vector-dbs`*
