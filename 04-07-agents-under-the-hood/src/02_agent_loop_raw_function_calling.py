@@ -48,6 +48,15 @@ def apply_discount(price: float, discount_tier: str) -> float:
 # PART 2: HAND-WRITTEN JSON TOOL SCHEMAS
 # ==========================================
 
+# ?? IMPORTANT: PROVIDER-SPECIFIC FORMAT ??
+# This JSON schema format is specific to OpenAI/Ollama.
+# Each LLM provider uses a DIFFERENT format for tool definitions:
+#   OpenAI/Ollama  ? {"type": "function", "function": {"name": ..., "parameters": {...}}}
+#   Anthropic      ? {"name": ..., "description": ..., "input_schema": {...}}
+#   Google Gemini  ? {"function_declarations": [{"name": ..., "parameters": {...}}]}
+# If you switch providers, you MUST rewrite these schemas.
+# This is exactly why LangChain's @tool + bind_tools() exists — it handles this for you.
+
 # DIFFERENCE 2: Without @tool, we must MANUALLY define the JSON schema for each function.
 # This is exactly what LangChain's @tool decorator generates automatically
 # from the function's type hints and docstring.
