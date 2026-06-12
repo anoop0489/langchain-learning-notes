@@ -1,4 +1,4 @@
-# 06. Agents Under the Hood 🧅
+# 06. Agents Under the Hood 🧅 Peeling the layers of abstraction from LangChain down to raw prompt engineering.
 
 *Based on Section 5: Agents Under The Hood - LangChain Tool Calling*
 

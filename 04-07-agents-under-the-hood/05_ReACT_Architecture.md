@@ -1,4 +1,4 @@
-﻿# 04. Agents Under The Hood: The ReACT Architecture 🤖
+﻿# 05. The ReACT Architecture 🤖
 
 *Based on Section 4: Agents Under The Hood (Lectures 24 - 27)*
 
