@@ -1,9 +1,10 @@
-# 06. Agents Under the Hood 🧅 Peeling the layers of abstraction from LangChain down to raw prompt engineering.
+# 06. Agents Under the Hood 🧅
+
+Peeling the layers of abstraction from LangChain down to raw prompt engineering.
 
 *Based on Section 5: Agents Under The Hood - LangChain Tool Calling*
 
 ## 🎯 What You Will Learn
-* Peeling back the layers of a LangChain agent — from high-level abstractions down to raw prompt engineering.
 * The "Big Idea": Peeling back abstractions from Framework Magic down to Raw Regex.
 * How to setup the environment and local Ollama instance for this module.
 * How the `@tool` decorator uses reflection to auto-generate JSON schemas.

@@ -1,6 +1,9 @@
 # CHANGE 1: Add re + inspect -- we'll parse tool calls from raw text instead of structured JSON.
 # re = Regular Expressions for parsing raw text output from the LLM.
-# inspect = Python's reflection module to read function signatures and docstrings at runtime.
+# inspect = Python's built-in reflection module. It can read a function's signature
+#   (parameter names + types) and docstring AT RUNTIME without you hardcoding them.
+#   This is how we auto-generate tool descriptions for the prompt -- similar to how
+#   C#/Java reflection reads [Attributes] or annotations from methods at runtime.
 import re
 import inspect
 from dotenv import load_dotenv
@@ -65,10 +68,21 @@ def get_tool_descriptions(tools_dict):
     The output looks like: get_product_price(product: str) -> float - Look up the price..."""
     descriptions = []
     for tool_name, tool_function in tools_dict.items():
-        # __wrapped__ bypasses decorator wrappers (e.g., @traceable adds *, config=None)
+        # @traceable wraps our function and adds extra params like (*, config=None).
+        # __wrapped__ is Python's standard way to get the ORIGINAL function back,
+        # so inspect.signature() sees (product: str) instead of (product: str, *, config=None).
         original_function = getattr(tool_function, "__wrapped__", tool_function)
+
+        # inspect.signature() reads the function's type hints at runtime.
+        # For get_product_price, this returns: (product: str) -> float
         signature = inspect.signature(original_function)
+
+        # inspect.getdoc() reads the function's docstring at runtime.
+        # For get_product_price, this returns: "Look up the price of a product in the catalog."
         docstring = inspect.getdoc(tool_function) or ""
+
+        # Combine into: "get_product_price(product: str) -> float - Look up the price..."
+        # This plain-text description goes INTO the prompt so the LLM knows what tools exist.
         descriptions.append(f"{tool_name}{signature} - {docstring}")
     return "\n".join(descriptions)
 
@@ -79,6 +93,15 @@ tool_names = ", ".join(tools.keys())
 # Instead of passing JSON tool schemas to the API, we describe everything in plain text.
 # The LLM must follow this strict format, and we parse its output with regex.
 # Based on the original ReAct paper: https://arxiv.org/abs/2210.03629
+#
+# THIS IS THE SAME TEMPLATE that LangChain's AgentExecutor uses internally
+# (see: hwchase17/react on LangSmith Hub). The placeholders are:
+#   {tool_descriptions} -- plain-text descriptions of available functions
+#   {tool_names}        -- comma-separated list like "get_product_price, apply_discount"
+#   {{question}}        -- the user's input (double-braces to escape f-string)
+# After each iteration, we append the Thought/Action/Observation to a "scratchpad"
+# string and re-inject it into the prompt. That scratchpad IS the agent's memory.
+# Before June 2023 (when OpenAI added function calling), ALL agents worked this way.
 react_prompt = f"""
 STRICT RULES -- you must follow these exactly:
 1. NEVER guess or assume any product price. You MUST call get_product_price first to get the real price.
@@ -105,6 +128,21 @@ Begin!
 
 Question: {{question}}
 Thought:"""
+
+# WHY EACH LINE IN THE FORMAT ABOVE EXISTS (who writes it and why our code needs it):
+# -----------------------------------------------------------------------
+#   "Thought:"       -- Written by LLM. Forces chain-of-thought reasoning before
+#                       acting. Without it, LLMs skip tools and guess answers.
+#   "Action:"        -- Written by LLM. Our regex r"Action:\s*(.+)" grabs this as
+#                       the tool name to execute. This IS the "function call".
+#   "Action Input:"  -- Written by LLM. Our regex grabs this as the arguments to
+#                       pass to the function. Replaces structured JSON args.
+#   "Observation:"   -- Written by OUR CODE, never the LLM. We use stop=["\nObservation"]
+#                       to halt the LLM before it writes this, then we inject the
+#                       real tool result. Without stop, LLM hallucinates fake results.
+#   "Final Answer:"  -- Written by LLM. Our regex exit condition. When found, loop stops.
+#
+# Summary: An "agent" is just a prompt + regex + stop token + loop. No magic.
 
 
 # ==========================================
