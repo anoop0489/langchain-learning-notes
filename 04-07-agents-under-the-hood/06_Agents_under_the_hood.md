@@ -4,9 +4,11 @@ Peeling the layers of abstraction from LangChain down to raw prompt engineering.
 
 *Based on Section 5: Agents Under The Hood - LangChain Tool Calling*
 
-## What is an Agent Loop?
+## What is this section about?
 
-An agent loop is a **repeating cycle** where an LLM reasons about a task, requests a tool call, receives the result, and decides whether to call another tool or return a final answer. It's the runtime mechanism that turns a stateless LLM into an autonomous agent capable of multi-step problem solving.
+This section peels back LangChain's abstractions to reveal the **ReAct loop** underneath -- the repeating cycle where an LLM reasons, calls a tool, observes the result, and repeats until it has a final answer. We build it three times, removing one layer of abstraction each time.
+
+*(Note: "Agent loop" is an informal practitioner term. The formal academic concept is **ReAct** (Reason + Act) from [Yao et al. 2022](https://arxiv.org/abs/2210.03629). LangChain's implementation is called `AgentExecutor`.)*
 
 ## What You Will Learn
 * The "Big Idea": Peeling back abstractions from Framework Magic down to Raw Regex.
