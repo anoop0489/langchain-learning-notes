@@ -28,8 +28,9 @@ Peeling back LangChain's abstractions layer by layer — from framework magic to
 * [06. Agents Under the Hood - Tool Calling & Raw Loops](./04-07-agents-under-the-hood/06_Agents_Under_The_Hood.md) *(Sections 5–7)*
 
 ### Section 8: Function Calling 🔧
-*Folder: `/08-function-calling`*
-* *(Coming Soon)*
+*Folder: [`/08-function-calling`](./08-function-calling)*
+Theory of function calling -- why it replaced the ReAct prompt and how it works.
+* [08. Function Calling (Theory)](./08-function-calling/08_Function_Calling.md)
 
 ### Section 9: The GIST of RAG 📚
 *Folder: `/09-gist-of-rag`*
