@@ -21,6 +21,11 @@ MODEL = "qwen3:1.7b"
 
 # @traceable is NOT a LangChain thing — it's from LangSmith for observability only.
 # It does NOT generate JSON schemas. It just logs the function call for debugging.
+# run_type= tells LangSmith how to categorize this in the trace UI:
+#   "tool"      ? Tool execution (function the agent called)
+#   "llm"       ? LLM API call (shows tokens, latency, model info)
+#   "chain"     ? Chain/pipeline step (default if omitted)
+#   "retriever" ? Retrieval step (for RAG workflows)
 
 @traceable(run_type="tool")
 def get_product_price(product: str) -> float:
