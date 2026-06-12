@@ -1,10 +1,14 @@
-# 06. Agents Under the Hood 🧅
+# 06. Agents Under the Hood
 
 Peeling the layers of abstraction from LangChain down to raw prompt engineering.
 
 *Based on Section 5: Agents Under The Hood - LangChain Tool Calling*
 
-## 🎯 What You Will Learn
+## What is an Agent Loop?
+
+An agent loop is a **repeating cycle** where an LLM reasons about a task, requests a tool call, receives the result, and decides whether to call another tool or return a final answer. It's the runtime mechanism that turns a stateless LLM into an autonomous agent capable of multi-step problem solving.
+
+## What You Will Learn
 * The "Big Idea": Peeling back abstractions from Framework Magic down to Raw Regex.
 * How to setup the environment and local Ollama instance for this module.
 * How the `@tool` decorator uses reflection to auto-generate JSON schemas.

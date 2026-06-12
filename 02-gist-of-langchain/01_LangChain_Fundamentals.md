@@ -1,6 +1,10 @@
 # 01. LangChain Basics: PromptTemplates & LCEL
 
-## 🎯 What You Will Learn
+## What is LangChain?
+
+LangChain is an open-source Python/JS framework that provides a **standard interface** for interacting with LLMs from any provider (OpenAI, Anthropic, Google, Ollama, etc.) and composing them into chains, agents, and retrieval pipelines -- without rewriting code when you switch providers.
+
+## What You Will Learn
 * The fundamentals of LangChain's Declarative Orchestration (LCEL).
 * How to structure context using `PromptTemplate` vs `ChatPromptTemplate`.
 * How to implement Model Agnosticism (swapping between OpenAI and local Ollama models).
