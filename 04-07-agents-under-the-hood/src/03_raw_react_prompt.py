@@ -1,4 +1,4 @@
-# CHANGE 1: Add re + inspect — we'll parse tool calls from raw text instead of structured JSON.
+# CHANGE 1: Add re + inspect -- we'll parse tool calls from raw text instead of structured JSON.
 # re = Regular Expressions for parsing raw text output from the LLM.
 # inspect = Python's reflection module to read function signatures and docstrings at runtime.
 import re
@@ -43,7 +43,7 @@ def apply_discount(price: float, discount_tier: str) -> float:
     discount = discount_percentages.get(discount_tier, 0)
     return round(price * (1 - discount / 100), 2)
 
-# Tool registry — same Service Locator pattern as Files 01 & 02.
+# Tool registry -- same Service Locator pattern as Files 01 & 02.
 # When we parse a tool name from the LLM's raw text, we look it up here.
 tools = {
     "get_product_price": get_product_price,
@@ -75,16 +75,16 @@ def get_tool_descriptions(tools_dict):
 tool_descriptions = get_tool_descriptions(tools)
 tool_names = ", ".join(tools.keys())
 
-# The ReAct Prompt Template — this is the ENTIRE "brain" of the agent.
+# The ReAct Prompt Template -- this is the ENTIRE "brain" of the agent.
 # Instead of passing JSON tool schemas to the API, we describe everything in plain text.
 # The LLM must follow this strict format, and we parse its output with regex.
 # Based on the original ReAct paper: https://arxiv.org/abs/2210.03629
 react_prompt = f"""
-STRICT RULES — you must follow these exactly:
+STRICT RULES -- you must follow these exactly:
 1. NEVER guess or assume any product price. You MUST call get_product_price first to get the real price.
-2. Only call apply_discount AFTER you have received a price from get_product_price. Pass the exact price returned by get_product_price — do NOT pass a made-up number.
+2. Only call apply_discount AFTER you have received a price from get_product_price. Pass the exact price returned by get_product_price -- do NOT pass a made-up number.
 3. NEVER calculate discounts yourself using math. Always use the apply_discount tool.
-4. If the user does not specify a discount tier, ask them which tier to use — do NOT assume one.
+4. If the user does not specify a discount tier, ask them which tier to use -- do NOT assume one.
 
 Answer the following questions as best you can. You have access to the following tools:
 
@@ -111,7 +111,7 @@ Thought:"""
 # PART 3: THE AGENT LOOP (THE STATE MACHINE)
 # ==========================================
 
-# CHANGE 4: Drop tools= from ollama.chat(). The LLM has no idea it's an agent —
+# CHANGE 4: Drop tools= from ollama.chat(). The LLM has no idea it's an agent --
 # all agency comes from the prompt above and our regex parsing below.
 # We just send a plain text prompt and get plain text back. No structured tool_calls.
 @traceable(name="Ollama Chat", run_type="llm")
@@ -131,7 +131,7 @@ def run_agent(question: str):
     prompt = react_prompt.format(question=question)
     scratchpad = ""
 
-    # START THE LOOP (Circuit Breaker pattern — cap at MAX_ITERATIONS)
+    # START THE LOOP (Circuit Breaker pattern -- cap at MAX_ITERATIONS)
     for iteration in range(1, MAX_ITERATIONS + 1):
         print(f"\n--- Iteration {iteration} ---")
         full_prompt = prompt + scratchpad
@@ -148,7 +148,7 @@ def run_agent(question: str):
         output = response.message.content
         print(f"LLM Output:\n{output}")
 
-        # STEP B: Exit Condition — check if the LLM produced a "Final Answer:" line.
+        # STEP B: Exit Condition -- check if the LLM produced a "Final Answer:" line.
         print(f"  [Parsing] Looking for Final Answer in LLM output...")
         final_answer_match = re.search(r"Final Answer:\s*(.+)", output)
         if final_answer_match:
@@ -159,7 +159,7 @@ def run_agent(question: str):
             return final_answer
 
         # STEP C: Parse the tool call from raw text using regex.
-        # CHANGE 6: Parse tool calls from raw text with regex — fragile if LLM doesn't follow format.
+        # CHANGE 6: Parse tool calls from raw text with regex -- fragile if LLM doesn't follow format.
         # In Files 01 & 02, we read structured tool_calls from the API response.
         # Here, we literally regex the LLM's text output. If it deviates from the format, we break.
         print(f"  [Parsing] Looking for Action and Action Input in LLM output...")

@@ -73,16 +73,16 @@ def run_agent(question: str):
                 "You are a helpful shopping assistant. "
                 "You have access to a product catalog tool "
                 "and a discount tool.\n\n"
-                "STRICT RULES — you must follow these exactly:\n"
+                "STRICT RULES -- you must follow these exactly:\n"
                 "1. NEVER guess or assume any product price. "
                 "You MUST call get_product_price first to get the real price.\n"
                 "2. Only call apply_discount AFTER you have received "
                 "a price from get_product_price. Pass the exact price "
-                "returned by get_product_price — do NOT pass a made-up number.\n"
+                "returned by get_product_price -- do NOT pass a made-up number.\n"
                 "3. NEVER calculate discounts yourself using math. "
                 "Always use the apply_discount tool.\n"
                 "4. If the user does not specify a discount tier, "
-                "ask them which tier to use — do NOT assume one."
+                "ask them which tier to use -- do NOT assume one."
             )
         ),
         HumanMessage(content=question),

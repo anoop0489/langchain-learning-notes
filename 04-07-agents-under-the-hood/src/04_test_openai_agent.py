@@ -1,5 +1,5 @@
 """
-04_test_openai_agent.py — Quick Test Runner (OpenAI Cloud)
+04_test_openai_agent.py -- Quick Test Runner (OpenAI Cloud)
 
 PURPOSE:
   This file is a simplified version of 01_agent_loop_langchain_tool_calling.py
@@ -8,7 +8,7 @@ PURPOSE:
   works against a cloud LLM.
 
   It demonstrates the Factory Pattern: the exact same agent loop works with
-  any provider — just swap the model string.
+  any provider -- just swap the model string.
 
 PREREQUISITES:
   - OPENAI_API_KEY set in your .env file
@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 # 1. Load environment variables (OPENAI_API_KEY) from the .env file
 load_dotenv()
 
-# LangSmith tracing — disabled on corporate networks (SSL blocked).
+# LangSmith tracing -- disabled on corporate networks (SSL blocked).
 # Set to "true" when running from home/non-firewalled network to see traces
 # at https://smith.langchain.com project: "langchain-course"
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -101,7 +101,7 @@ def run_agent(question: str):
         ai_message = llm_with_tools.invoke(messages)
         tool_calls = ai_message.tool_calls
 
-        # Exit condition — no tool calls means final answer
+        # Exit condition -- no tool calls means final answer
         if not tool_calls:
             print(f"\nFinal Answer: {ai_message.content}")
             return ai_message.content

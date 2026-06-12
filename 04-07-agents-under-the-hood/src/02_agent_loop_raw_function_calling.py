@@ -1,4 +1,4 @@
-from dotenv import load_dotenv
+ï»¿from dotenv import load_dotenv
 
 # 1. Load environment variables (like your LANGSMITH_API_KEY) from the .env file
 load_dotenv()
@@ -19,7 +19,7 @@ MODEL = "qwen3:1.7b"
 # Without @tool, LangChain won't auto-generate JSON schemas for us.
 # We'll have to write those schemas by hand (see PART 2 below).
 
-# @traceable is NOT a LangChain thing — it's from LangSmith for observability only.
+# @traceable is NOT a LangChain thing -- it's from LangSmith for observability only.
 # It does NOT generate JSON schemas. It just logs the function call for debugging.
 # run_type= tells LangSmith how to categorize this in the trace UI:
 #   "tool"      ? Tool execution (function the agent called)
@@ -48,14 +48,14 @@ def apply_discount(price: float, discount_tier: str) -> float:
 # PART 2: HAND-WRITTEN JSON TOOL SCHEMAS
 # ==========================================
 
-# ?? IMPORTANT: PROVIDER-SPECIFIC FORMAT ??
+# !!! IMPORTANT: PROVIDER-SPECIFIC FORMAT !!!
 # This JSON schema format is specific to OpenAI/Ollama.
 # Each LLM provider uses a DIFFERENT format for tool definitions:
-#   OpenAI/Ollama  ? {"type": "function", "function": {"name": ..., "parameters": {...}}}
-#   Anthropic      ? {"name": ..., "description": ..., "input_schema": {...}}
-#   Google Gemini  ? {"function_declarations": [{"name": ..., "parameters": {...}}]}
+#   OpenAI/Ollama  -> {"type": "function", "function": {"name": ..., "parameters": {...}}}
+#   Anthropic      -> {"name": ..., "description": ..., "input_schema": {...}}
+#   Google Gemini  -> {"function_declarations": [{"name": ..., "parameters": {...}}]}
 # If you switch providers, you MUST rewrite these schemas.
-# This is exactly why LangChain's @tool + bind_tools() exists — it handles this for you.
+# This is exactly why LangChain's @tool + bind_tools() exists -- it handles this for you.
 
 # DIFFERENCE 2: Without @tool, we must MANUALLY define the JSON schema for each function.
 # This is exactly what LangChain's @tool decorator generates automatically
@@ -122,7 +122,10 @@ tools_for_llm = [
 
 # --- Helper: traced Ollama call ---
 # DIFFERENCE 3: Without LangChain, we must manually trace LLM calls for LangSmith.
-# In File 01, LangChain handles tracing automatically when you use init_chat_model().
+# In File 01, init_chat_model() returns a LangChain BaseChatModel which has AUTOMATIC
+# LangSmith tracing built-in -- every .invoke() is logged without you doing anything.
+# Here, ollama.chat() is a raw SDK call with ZERO tracing. LangSmith doesn't know it
+# exists unless we manually wrap it with @traceable. That's what this function does.
 
 
 @traceable(name="Ollama Chat", run_type="llm")
@@ -148,7 +151,7 @@ def run_agent(question: str):
 
     # 2. Create the "Agent Scratchpad" (Conversation History)
     # KEY DIFFERENCE: Messages are plain dicts instead of typed objects (SystemMessage, HumanMessage).
-    # The LLM has no memory — we must send the ENTIRE history every single time.
+    # The LLM has no memory -- we must send the ENTIRE history every single time.
     messages = [
         {
             "role": "system",
@@ -156,22 +159,22 @@ def run_agent(question: str):
                 "You are a helpful shopping assistant. "
                 "You have access to a product catalog tool "
                 "and a discount tool.\n\n"
-                "STRICT RULES — you must follow these exactly:\n"
+                "STRICT RULES -- you must follow these exactly:\n"
                 "1. NEVER guess or assume any product price. "
                 "You MUST call get_product_price first to get the real price.\n"
                 "2. Only call apply_discount AFTER you have received "
                 "a price from get_product_price. Pass the exact price "
-                "returned by get_product_price — do NOT pass a made-up number.\n"
+                "returned by get_product_price -- do NOT pass a made-up number.\n"
                 "3. NEVER calculate discounts yourself using math. "
                 "Always use the apply_discount tool.\n"
                 "4. If the user does not specify a discount tier, "
-                "ask them which tier to use — do NOT assume one."
+                "ask them which tier to use -- do NOT assume one."
             ),
         },
         {"role": "user", "content": question},
     ]
 
-    # 3. START THE LOOP (Circuit Breaker pattern — cap at MAX_ITERATIONS)
+    # 3. START THE LOOP (Circuit Breaker pattern -- cap at MAX_ITERATIONS)
     for iteration in range(1, MAX_ITERATIONS + 1):
         print(f"\n--- Iteration {iteration} ---")
 
@@ -182,13 +185,13 @@ def run_agent(question: str):
 
         tool_calls = ai_message.tool_calls
 
-        # STEP B: Exit Condition — if no tool calls, the LLM has the final answer.
+        # STEP B: Exit Condition -- if no tool calls, the LLM has the final answer.
         if not tool_calls:
             print(f"\nFinal Answer: {ai_message.content}")
             return ai_message.content
 
         # STEP C: Process the Tool Request
-        # Process only the FIRST tool call — force one tool per iteration
+        # Process only the FIRST tool call -- force one tool per iteration
         tool_call = tool_calls[0]
         # DIFFERENCE 6: Attribute access (.function.name) instead of dict access (.get("name"))
         # because Ollama returns typed objects, not dicts like LangChain.
