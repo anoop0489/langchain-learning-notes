@@ -1,4 +1,23 @@
-﻿from dotenv import load_dotenv
+﻿# ==========================================================================
+# NOTE: This entire file is written specifically for the OLLAMA Python SDK.
+# The SDK calls (ollama.chat()), message format (plain dicts with "role"),
+# tool schema format (OpenAI-style JSON), and response objects (.message,
+# .tool_calls, .function.name) are ALL Ollama-specific.
+# If you switch to another provider (OpenAI SDK, Anthropic SDK, etc.),
+# you would need to rewrite the API calls, message structures, and
+# response parsing to match that provider's SDK.
+# This is the exact problem LangChain solves -- one interface for all providers.
+#
+# WHY LANGCHAIN MATTERS (remember this):
+#   Without LangChain: You are locked to ONE provider. Switching from Ollama to
+#   OpenAI or Anthropic means rewriting: API calls, message dicts, tool schemas,
+#   response parsing, and error handling. That's 80% of this file.
+#   With LangChain:    You change ONE string: init_chat_model("openai:gpt-4o") ->
+#   init_chat_model("ollama:qwen3") -> init_chat_model("anthropic:claude-3").
+#   Everything else (tools, messages, loops) stays identical. That's the value.
+# ==========================================================================
+
+from dotenv import load_dotenv
 
 # 1. Load environment variables (like your LANGSMITH_API_KEY) from the .env file
 load_dotenv()
