@@ -13,7 +13,7 @@
 
 ## What is Function Calling?
 
-Function calling (or tool calling) refers to the model's ability to produce a **structured function call** to an external function -- complete with its arguments -- instead of just generating plain text.
+Function calling (or tool calling) is an LLM capability where the model, instead of generating plain text, outputs a **structured JSON object** that specifies a function name and its arguments -- telling your application exactly which code to execute and with what inputs.
 
 Key points:
 - The LLM generates a **well-structured JSON response** that is easy to parse.
