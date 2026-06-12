@@ -10,6 +10,27 @@ This section peels back LangChain's abstractions to reveal the **ReAct loop** un
 
 *(Note: "Agent loop" is an informal practitioner term. The formal academic concept is **ReAct** (Reason + Act) from [Yao et al. 2022](https://arxiv.org/abs/2210.03629). LangChain's implementation is called `AgentExecutor`.)*
 
+---
+
+## Key Definitions (Interview-Ready)
+
+Use these as your opening sentence when asked "What is X?" in an interview:
+
+| Term | Definition |
+|------|------------|
+| **AI Agent** | A software system that uses an LLM as its reasoning engine to autonomously decide which actions to take, execute those actions via tools, and iterate until a goal is achieved. |
+| **ReAct** | An agent architecture (Yao et al. 2022) that interleaves **Reasoning** (chain-of-thought) with **Acting** (tool execution), forcing the LLM to think before it acts and observe before it thinks again. |
+| **Agent Loop** | The runtime loop that repeatedly sends context to the LLM, receives a tool call or final answer, executes the tool, appends the result, and loops -- implementing the ReAct cycle in code. |
+| **Agent Scratchpad** | The growing message history (or string) that accumulates all previous Thoughts, Actions, and Observations, re-sent to the LLM on every iteration because LLMs are stateless. |
+| **Function Calling** | A fine-tuned LLM capability (introduced June 2023 by OpenAI) where the model outputs structured JSON specifying a function name and arguments, replacing fragile text-based tool invocation. |
+| **Tool** | Any external function (API call, database query, calculation) that the LLM can request to execute but cannot run itself -- the application executes it and returns the result. |
+| **AgentExecutor** | LangChain's built-in implementation of the ReAct loop -- a Python class that handles the invoke-parse-execute-observe cycle so you don't write the loop manually. |
+| **`@tool` decorator** | LangChain's annotation that uses reflection to auto-generate a JSON schema from a Python function's type hints and docstring, making it callable by the LLM. |
+| **`bind_tools()`** | Attaches tool JSON schemas to the LLM's HTTP request payload, telling the model which functions it's allowed to call -- does not execute anything itself. |
+| **`init_chat_model()`** | A factory function that instantiates the correct LLM class based on a provider string, enabling provider-agnostic code (swap "ollama:qwen3" to "openai:gpt-4o" without code changes). |
+| **`ToolMessage`** | The message type used to return a tool's execution result back to the LLM, tagged with the original `tool_call_id` so the model can match the result to its request. |
+| **Circuit Breaker / MAX_ITERATIONS** | A capped `for` loop that prevents infinite agent execution if the LLM gets stuck in a tool-calling loop -- protects against runaway API costs. |
+
 ## What You Will Learn
 * The "Big Idea": Peeling back abstractions from Framework Magic down to Raw Regex.
 * How to setup the environment and local Ollama instance for this module.
