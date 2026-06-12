@@ -224,6 +224,10 @@ def run_agent(question: str):
         if tool_name not in tools:
             observation = f"Error: Tool '{tool_name}' not found. Available tools: {list(tools.keys())}"
         else:
+            # tools[tool_name] gets the function by name from the dict (Service Locator).
+            # (*args) unpacks the list and calls it -- e.g., get_product_price("laptop").
+            # The () IS the invocation -- in Python, any object with () after it gets called.
+            # So tools["get_product_price"]("laptop") is the same as get_product_price("laptop").
             observation = str(tools[tool_name](*args))
 
 
