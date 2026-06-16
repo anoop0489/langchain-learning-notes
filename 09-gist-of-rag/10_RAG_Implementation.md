@@ -235,33 +235,33 @@ result = chain.invoke({"question": "what is Pinecone in machine learning?"})
 Input: {"question": "what is Pinecone?"}
 		   │
 		   ▼
-┌─────────────────────────────────────────────┐
-│  RunnablePassthrough.assign(context=...)     │
-│                                             │
-│  1. Passes input through unchanged:         │
-│     {"question": "what is Pinecone?"}       │
-│                                             │
-│  2. Computes new key "context":             │
-│     itemgetter("question")                  │  → extracts "what is Pinecone?"
-│       | retriever                           │  → [Doc1, Doc2, Doc3]
-│       | format_docs                         │  → "chunk1\n\nchunk2\n\nchunk3"
-│                                             │
+┌───────────────────────────────────────────────-┐
+│  RunnablePassthrough.assign(context=...)       │
+│                                                │
+│  1. Passes input through unchanged:            │
+│     {"question": "what is Pinecone?"}          │
+│                                                │
+│  2. Computes new key "context":                │
+│     itemgetter("question")                     │  → extracts "what is Pinecone?"
+│       | retriever                              │  → [Doc1, Doc2, Doc3]
+│       | format_docs                            │  → "chunk1\n\nchunk2\n\nchunk3"
+│                                                │
 │  Output: {"question": "...", "context": "..."} │
-└─────────────────────────────────────────────┘
+└─────────────────────────────────────────────-──┘
 		   │
 		   ▼
 ┌──────────────────────────┐
-│  prompt_template          │  → HumanMessage with context + question filled in
+│  prompt_template         │  → HumanMessage with context + question filled in
 └──────────────────────────┘
 		   │
 		   ▼
 ┌──────────────────────────┐
-│  llm                      │  → AIMessage(content="Pinecone is a...")
+│  llm                     │  → AIMessage(content="Pinecone is a...")
 └──────────────────────────┘
 		   │
 		   ▼
 ┌──────────────────────────┐
-│  StrOutputParser()        │  → "Pinecone is a..." (just the string)
+│  StrOutputParser()       │  → "Pinecone is a..." (just the string)
 └──────────────────────────┘
 ```
 
