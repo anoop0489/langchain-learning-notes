@@ -24,7 +24,9 @@ We build a complete RAG system that:
 │   ├── ingestion.py                    # Phase 1: Load → Chunk → Embed → Store
 │   ├── main.py                         # Phase 2: Retrieve → Augment → Generate
 │   ├── test_multimodal_pdf_rag.py      # PDF RAG with 4-loader comparison (vision default)
-│   └── test_conversational_rag.py      # Multi-turn RAG with question reformulation
+│   ├── test_conversational_rag.py      # Multi-turn RAG with question reformulation
+│   ├── test_streaming_rag.py           # .invoke() vs .stream() side-by-side comparison
+│   └── test_indexing_strategy.py       # Incremental ingestion with RecordManager
 ├── 09_RAG_Theory_And_Concepts.md       # Theory & definitions (previous file)
 └── 10_RAG_Implementation.md            # This file (implementation walkthrough)
 ```
@@ -501,3 +503,39 @@ The examples above cover the foundational RAG pipeline. Two real-world patterns 
 - **Persistent across sessions** → store in a database (Redis, PostgreSQL)
 
 → Run: `uv run test_conversational_rag.py`
+
+---
+
+### 3. Streaming RAG — [`src/test_streaming_rag.py`](src/test_streaming_rag.py)
+
+**Problem:** With `.invoke()`, the user stares at a blank screen for 5-10 seconds while the LLM generates the full response. The entire answer appears at once.
+
+**Solution:** Swap `.invoke()` for `.stream()` on the **same LCEL chain** — tokens arrive one at a time as the LLM generates them. First token appears within 200-500ms.
+
+| Method | Time to First Token | User Experience |
+|--------|:-------------------:|----------------|
+| `.invoke()` | 5-10 seconds | Blank screen → wall of text |
+| `.stream()` | 200-500ms | Words appear as LLM thinks |
+
+**Key insight:** You build the chain ONCE. Then choose how to consume: `.invoke()`, `.stream()`, `.ainvoke()`, `.astream()`, or `.batch()`. The chain logic doesn't change.
+
+→ Run: `uv run test_streaming_rag.py`
+
+---
+
+### 4. Indexing Strategy — [`src/test_indexing_strategy.py`](src/test_indexing_strategy.py)
+
+**Problem:** Running ingestion twice re-embeds every chunk — duplicates in the vector store, wasted embedding costs, and no way to delete removed content.
+
+**Solution:** LangChain's `RecordManager` + `index()` with `cleanup="incremental"` — tracks content hashes in SQLite (or PostgreSQL in production). On re-ingestion:
+
+| Chunk Status | Action | API Cost |
+|:------------|:-------|:--------:|
+| New (never seen) | Embed + insert | 💰 |
+| Unchanged | **Skip** | 🆓 |
+| Modified | Re-embed + update | 💰 |
+| Deleted from source | **Remove** from vector store | 🆓 |
+
+**C# Analogy:** Like EF Core Migrations — running `dotnet ef database update` skips already-applied migrations. The RecordManager does the same for embeddings.
+
+→ Run: `uv run test_indexing_strategy.py`

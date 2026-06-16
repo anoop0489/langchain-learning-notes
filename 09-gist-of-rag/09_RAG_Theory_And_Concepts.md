@@ -6,6 +6,28 @@ A comprehensive guide to Retrieval Augmented Generation: what it is, why it matt
 
 ---
 
+## 📑 Table of Contents
+
+| # | Section | What You'll Learn |
+|---|---------|-------------------|
+| 1 | [Key Definitions](#key-definitions-interview-ready) | 20+ terms with quick-recall openers for interviews |
+| 2 | [The Problem RAG Solves](#the-problem-rag-solves) | Why LLMs fail without RAG, the 4 problems with stuffing |
+| 3 | [The RAG Pipeline](#the-rag-pipeline-two-phases) | Ingestion (offline) + Retrieval (online) phases |
+| 4 | [Document & Loaders](#deep-dive-langchain-document--document-loaders) | `Document` object, loader abstraction, source code |
+| 5 | [Embeddings](#deep-dive-embeddings) | Vectors, distance metrics, model selection, same-model rule |
+| 6 | [Vector Databases](#deep-dive-vector-databases) | Pinecone setup walkthrough, `from_documents()`, DB comparison |
+| 7 | [Chunking](#deep-dive-chunking) | Size trade-offs, overlap, advanced strategies |
+| 8 | [The Retriever](#deep-dive-the-retriever) | `as_retriever()`, inheritance chain, how search works |
+| 9 | [Production Considerations](#production-considerations) | Agentic vs deterministic RAG, LangSmith tracing |
+| 10 | [Streaming](#deep-dive-streaming-token-by-token-responses) | `.stream()` vs `.invoke()`, FastAPI example, method family |
+| 11 | [Indexing Strategy](#deep-dive-indexing-strategy-incremental-ingestion) | RecordManager, content hashing, cleanup modes, SQLite vs Postgres |
+| 12 | [Multimodal PDF RAG](#deep-dive-multimodal-pdf-rag) | Why text-only loaders fail, GPT-4o Vision approach, loader comparison |
+| 13 | [Conversational RAG](#deep-dive-conversational-rag-multi-turn) | Question reformulation, memory strategies, follow-up vs new topic |
+| 14 | [RAG Evaluation & Quality](#deep-dive-rag-evaluation--quality) | Three quality dimensions, failure modes, evaluation frameworks |
+| 15 | [Interview Q&A](#interview-qa-anchors) | 18 interview questions with production-grade answers |
+
+---
+
 ## What is this section about?
 
 This section teaches you how to build a **RAG pipeline** — the most common production pattern for making LLMs answer questions about your private data. We start with the "why" (motivation), then move through every building block (embeddings, vector stores, chunking, retrieval), and end with two complete implementations.
@@ -39,6 +61,10 @@ Use these as your opening sentence when asked "What is X?" in an interview:
 | **Grounding** | "Answer backed by evidence" | The practice of ensuring an LLM's response is based on retrieved factual data (the context) rather than its parametric knowledge or hallucination. |
 | **Knowledge Cutoff** | "LLM doesn't know anything after date X" | The training data deadline of an LLM. Facts, products, or events after this date are unknown to the model — a key motivation for RAG. |
 | **Hallucination** | "LLM confidently invents wrong facts" | When an LLM generates plausible-sounding but factually incorrect information because it lacks the real data. RAG directly combats this by providing actual source text. |
+| **Question Reformulation** | "Rewrite follow-ups as standalone queries" | The technique of using an LLM to resolve pronouns and references in follow-up questions by incorporating chat history, enabling accurate retrieval in multi-turn conversations. |
+| **Multimodal RAG** | "Vision model reads PDFs with diagrams" | An ingestion approach where PDF pages are rendered as images and processed by a Vision model (GPT-4o), capturing diagrams, tables, and layouts that text-only loaders miss. |
+| **RecordManager** | "Track what's already been embedded" | A LangChain component that stores content hashes in a database (SQLite/PostgreSQL) to enable incremental ingestion — skipping unchanged chunks, re-embedding modified ones, and deleting removed ones. |
+| **Content Hashing** | "SHA256 fingerprint of each chunk" | Each chunk's text is hashed to a unique fingerprint. On re-ingestion, matching hashes are skipped, changed hashes trigger re-embedding, and orphaned hashes trigger deletion. |
 
 ---
 
@@ -769,6 +795,141 @@ Think of the `RecordManager` like **EF Core Migrations**:
 
 ---
 
+## Deep Dive: Multimodal PDF RAG
+
+### The Problem with Text-Only Loaders
+
+Production PDFs aren't plain text. They contain **diagrams, flowcharts, tables, and complex layouts** that text-only loaders silently drop:
+
+| Loader | Text | Tables | Diagrams/Flowcharts | Cost |
+|--------|:----:|:------:|:-------------------:|------|
+| `PyPDFLoader` | ✅ | ❌ | ❌ | Free |
+| `PyMuPDFLoader` | ✅ | ⚠️ Partial | ❌ | Free |
+| `UnstructuredPDFLoader` | ✅ | ✅ | ❌ | Free* |
+| **Multimodal Vision (GPT-4o)** | ✅ | ✅ | ✅ | ~$0.01-0.03/page |
+
+### The Multimodal Approach
+
+Instead of extracting text, render each PDF page as an **image** and send it to GPT-4o Vision:
+
+```
+PDF Page → Render as Image (PyMuPDF) → GPT-4o Vision → Structured Text Description → Embed → Store
+```
+
+The Vision model "reads" everything a human would see — text, diagrams, flowcharts, tables, handwritten notes — and produces a rich text description that captures the full semantic content.
+
+### When to Use Each Loader
+
+| Scenario | Recommended Loader |
+|----------|-------------------|
+| Plain text PDFs (contracts, articles) | `PyPDFLoader` (free, fast) |
+| PDFs with tables but no images | `UnstructuredPDFLoader` |
+| Engineering docs, architecture diagrams | **Multimodal Vision** |
+| Mixed batch (some simple, some complex) | **Multimodal Vision** (safest default) |
+
+**Key insight:** You only ingest once. Spending $1 to properly process a 50-page PDF is worth it if every query returns accurate results instead of missing diagram context.
+
+> → See working implementation: [`src/test_multimodal_pdf_rag.py`](src/test_multimodal_pdf_rag.py)
+
+---
+
+## Deep Dive: Conversational RAG (Multi-Turn)
+
+### The Problem with Single-Shot RAG
+
+Basic RAG is **stateless** — each query is independent. This breaks for follow-up questions:
+
+```
+Q1: "What is CTS?"                        → Retrieves CTS docs ✅
+Q2: "How does the Hub connect to it?"      → Retrieves docs about "it" ❌ GARBAGE
+```
+
+The retriever doesn't know "it" refers to CTS from the previous question.
+
+### The Solution: Question Reformulation
+
+Before searching, use the LLM to **rewrite** follow-up questions into standalone queries:
+
+```
+Chat History: [("What is CTS?", "CTS is the Centralized Tracking System...")]
+Follow-up:    "How does the Hub connect to it?"
+Reformulated: "How does the Hub connect to the Centralized Tracking System (CTS)?"
+```
+
+The reformulated question is self-contained — the retriever can find relevant chunks without context.
+
+### Architecture
+
+```
+User Question → Reformulate (with history) → Retrieve → Generate → Update History
+```
+
+### Two Cases to Handle
+
+| Case | What Happens |
+|------|-------------|
+| **Follow-up** (references prior context) | Rewrite with resolved pronouns/references |
+| **New topic** (completely different subject) | Return unchanged — don't over-connect to prior context |
+
+This distinction is critical. A naive reformulation prompt will force connections between unrelated questions, producing worse retrieval than no reformulation at all.
+
+### Memory Strategies (Production)
+
+| Strategy | Best For | Trade-Off |
+|----------|----------|-----------|
+| **Last N turns** (list) | Short conversations | Simple, but unbounded growth |
+| **Summary memory** | Long conversations | Compresses history, loses detail |
+| **Database-backed** (Redis, PostgreSQL) | Persistent across sessions | Requires infra, but production-ready |
+
+> → See working implementation: [`src/test_conversational_rag.py`](src/test_conversational_rag.py)
+
+---
+
+## Deep Dive: RAG Evaluation & Quality
+
+### How Do You Know Your RAG System Works?
+
+Building a RAG pipeline is only half the work. In production, you need to **measure** whether retrieval is returning the right chunks and whether the LLM is generating grounded answers.
+
+### The Three Dimensions of RAG Quality
+
+| Dimension | What It Measures | Question It Answers |
+|-----------|-----------------|---------------------|
+| **Retrieval Relevance** | Are the retrieved chunks actually relevant? | "Did the retriever find the right documents?" |
+| **Answer Faithfulness** | Is the answer grounded in the context? | "Did the LLM stick to the retrieved facts?" |
+| **Answer Relevance** | Does the answer address the question? | "Did the LLM actually answer what was asked?" |
+
+### Common RAG Failure Modes
+
+| Failure | Symptom | Root Cause | Fix |
+|---------|---------|------------|-----|
+| **Wrong chunks retrieved** | Correct answer exists but isn't found | Bad chunking, wrong k, embedding mismatch | Adjust chunk size, increase k, verify same model |
+| **Hallucination despite context** | Answer includes facts not in chunks | Weak grounding prompt, model tendency | Strengthen "only use the context" instruction |
+| **Partial answer** | Answer is correct but incomplete | Relevant info split across chunks not retrieved | Increase k, add chunk overlap |
+| **Refusal to answer** | "I don't have enough information" | Overly strict grounding prompt | Relax constraints or improve retrieval |
+
+### Quick Quality Checks (No Framework Needed)
+
+Before reaching for evaluation frameworks, try these manual checks:
+
+1. **Eyeball test**: Ask 10 questions you know the answer to. Check if retrieved chunks contain the answer.
+2. **Source attribution**: Does the system tell you *which* chunks it used? If not, add metadata logging.
+3. **Adversarial test**: Ask questions where the answer is NOT in the documents. Does it hallucinate or say "I don't know"?
+4. **Edge cases**: Typos, multilingual queries, ambiguous questions — does retrieval degrade gracefully?
+
+### Evaluation Frameworks (When You Scale)
+
+| Framework | What It Does |
+|-----------|-------------|
+| **RAGAS** | Automated RAG evaluation with faithfulness, relevance, and context recall metrics |
+| **LangSmith** | Trace-level debugging + dataset-based evaluation with custom evaluators |
+| **DeepEval** | Unit testing for LLM outputs with built-in metrics |
+| **TruLens** | Feedback functions that score retrieval and generation quality |
+
+> **For this course**: LangSmith tracing gives you immediate visibility into what the retriever returns and what the LLM generates. Start there before adding automated evaluation.
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What is RAG and why do we need it?**
@@ -830,6 +991,18 @@ Think of the `RecordManager` like **EF Core Migrations**:
 **Q: What is LangChain's Indexing API and when would you use it?**
 
 > **A:** The Indexing API (`RecordManager` + `index()`) solves the problem of re-ingesting unchanged documents. It computes a content hash for each chunk and stores it in a tracking database (SQLite locally, PostgreSQL in production). On re-ingestion, it compares hashes: new chunks get embedded, unchanged chunks are skipped, modified chunks are re-embedded, and deleted chunks are removed from the vector store. This saves embedding costs and prevents duplicate vectors. Use `cleanup="incremental"` as the default mode.
+
+**Q: How do you handle PDFs with diagrams and flowcharts in RAG?**
+
+> **A:** Text-only loaders (`PyPDFLoader`) silently drop all visual content. The multimodal approach renders each PDF page as an image and sends it to a Vision model (GPT-4o), which produces a rich text description of everything on the page — text, tables, diagrams, flowcharts. This text is then embedded and stored normally. You only ingest once, so the per-page vision cost (~$0.01-0.03) is worth it for accurate retrieval.
+
+**Q: How do you handle follow-up questions in a RAG chatbot?**
+
+> **A:** Basic RAG is stateless — it can't resolve pronouns like "it" or "that" from prior turns. The solution is **question reformulation**: before retrieval, send the chat history + follow-up to the LLM to rewrite it as a standalone query. "How does it connect?" becomes "How does the Hub connect to the CTS system?" The key nuance: completely unrelated new questions should be returned unchanged — don't over-connect to prior context.
+
+**Q: What are the three dimensions of RAG quality?**
+
+> **A:** (1) **Retrieval relevance** — did the retriever find the right chunks? (2) **Answer faithfulness** — is the answer grounded in the retrieved context, not hallucinated? (3) **Answer relevance** — does the answer actually address the question asked? You can measure these manually with eyeball tests or at scale with frameworks like RAGAS, LangSmith evaluations, or DeepEval.
 
 ---
 
