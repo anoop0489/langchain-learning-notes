@@ -24,10 +24,11 @@ Each module adds its own dependencies. Here's the full list across the course:
 | **01 - Fundamentals** | `uv add langchain langchain-openai python-dotenv` |
 | **03 - LangSmith** | `uv add langsmith` |
 | **04 - Agents Under the Hood** | `uv add langchain langchain-ollama langchain-openai python-dotenv black isort` |
+| **09 - RAG (Embeddings & Retrieval)** | `uv add langchain-pinecone langchain-community langchain-text-splitters` |
 
 Or install everything at once:
 ```bash
-uv add langchain langchain-openai langchain-ollama langsmith python-dotenv black isort
+uv add langchain langchain-openai langchain-ollama langchain-pinecone langchain-community langchain-text-splitters langsmith python-dotenv black isort
 ```
 
 ---
@@ -80,6 +81,8 @@ Then fill in your actual keys:
 | `LANGCHAIN_API_KEY` | [smith.langchain.com](https://smith.langchain.com/) → Settings → API Keys | LangSmith tracing |
 | `LANGCHAIN_TRACING_V2` | Set to `true` to enable tracing | LangSmith tracing |
 | `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) → Dashboard → API Keys | Agent search tool |
+| `PINECONE_API_KEY` | [pinecone.io](https://pinecone.io/) → API Keys (free tier) | RAG vector store (Section 9+) |
+| `INDEX_NAME` | Pinecone console → your index name | RAG vector store (Section 9+) |
 
 **Sample `.env` file:**
 ```text
@@ -87,6 +90,8 @@ OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=lsv2_pt_xxxxxxxxxxxxxxxxxxxxxxxx
 TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxx
+PINECONE_API_KEY=pcsk_xxxxxxxxxxxxxxxxxxxxxxxx
+INDEX_NAME=medium-blogs-embeddings-index
 ```
 
 > ⚠️ **Never commit `.env` to Git.** It is already in `.gitignore`.
@@ -119,6 +124,39 @@ ollama run qwen3:1.7b
 ```
 
 **C# Analogy:** Think of Ollama as **Docker Desktop for LLMs**. You "pull" a model image and "run" it, exposing a local REST API that LangChain can talk to.
+
+---
+
+## 🌲 Pinecone (Vector Store for RAG — Section 9+)
+
+Starting from Module 09, we use **Pinecone** as our managed vector database for RAG.
+
+### Setup
+
+1. **Sign up** at [pinecone.io](https://pinecone.io/) — the free tier is sufficient for this course.
+2. **Create an index** in the Pinecone console:
+   - **Dimensions**: `1536` (must match your embedding model — OpenAI `text-embedding-ada-002` outputs 1536)
+   - **Metric**: `cosine` (default, best for text similarity)
+   - **Type**: `Dense`
+   - **Capacity Mode**: `Serverless`
+3. **Generate an API key** in the Pinecone console → API Keys.
+4. **Add to your `.env`**:
+   ```bash
+   PINECONE_API_KEY=pcsk_xxxxxxxxxxxxxxxxxxxxxxxx
+   INDEX_NAME=medium-blogs-embeddings-index
+   ```
+
+> ⚠️ **`PINECONE_API_KEY` must be this exact name** — LangChain's Pinecone integration auto-detects it from the environment. If you rename it, LangChain won't find it.
+
+### Verify
+
+```python
+import os
+from dotenv import load_dotenv
+load_dotenv()
+print(f"Pinecone key loaded: {os.environ['PINECONE_API_KEY'][:8]}...")
+print(f"Index name: {os.environ['INDEX_NAME']}")
+```
 
 ---
 

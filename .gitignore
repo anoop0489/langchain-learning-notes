@@ -3,11 +3,7 @@
 ################################################################################
 
 # --- Visual Studio ---
-/.vs/akgit
-/.vs/slnx.sqlite
-/.vs/VSWorkspaceState.json
-/.vs/akgit.slnx
-/.vs/CopilotSnapshots/B9F27A26DE98984BAF900C1BE4ED8830
+/.vs/
 
 # --- Python ---
 .venv/
