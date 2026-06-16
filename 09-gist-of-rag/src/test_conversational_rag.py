@@ -93,12 +93,18 @@ def check_prerequisites():
 # or implicit references will fail to retrieve relevant context.
 
 REFORMULATION_PROMPT = ChatPromptTemplate.from_template(
-    """Given the following conversation history and a follow-up question,
-rewrite the follow-up question to be a STANDALONE question that can be
-understood without the conversation history. Include all necessary context
-from the history in the reformulated question.
+    """Your job is to determine if a follow-up question references the prior conversation,
+and ONLY if it does, rewrite it as a standalone question.
 
-If the question is already standalone (not a follow-up), return it unchanged.
+RULES:
+1. If the question contains pronouns referring to prior context ("it", "they", "that",
+   "this system", "the same"), rewrite it to replace those references with the actual
+   entities from the chat history.
+2. If the question is about a COMPLETELY DIFFERENT TOPIC that does NOT reference
+   anything in the chat history, return it EXACTLY as-is. Do NOT add context from
+   prior questions.
+3. When in doubt, return the question unchanged. Less reformulation is better than
+   wrong reformulation.
 
 Chat History:
 {chat_history}
