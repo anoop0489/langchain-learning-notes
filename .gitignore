@@ -16,3 +16,6 @@ __pycache__/
 
 # --- Secrets ---
 .env
+
+# --- Raw transcripts (source material, not revision notes) ---
+Notes.txt

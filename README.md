@@ -33,8 +33,10 @@ Theory of function calling -- why it replaced the ReAct prompt and how it works.
 * [08. Function Calling (Theory)](./08-function-calling/08_Function_Calling.md)
 
 ### Section 9: The GIST of RAG 📚
-*Folder: `/09-gist-of-rag`*
-* *(Coming Soon: Embeddings, Vector Databases, & Retrieval)*
+*Folder: [`/09-gist-of-rag`](./09-gist-of-rag)*
+Retrieval Augmented Generation — from theory to a fully working pipeline with Pinecone.
+* [09. RAG Theory & Concepts (Embeddings, Vector DBs, Chunking)](./09-gist-of-rag/09_RAG_Theory_And_Concepts.md)
+* [10. RAG Implementation (Ingestion & Retrieval Pipelines)](./09-gist-of-rag/10_RAG_Implementation.md)
 
 ---
 
@@ -49,6 +51,7 @@ Theory of function calling -- why it replaced the ReAct prompt and how it works.
 - **Frameworks:** LangChain, LangGraph
 - **Observability:** LangSmith
 - **Models:** OpenAI (GPT-4o), Ollama (Local LLMs)
+- **Vector Stores:** Pinecone
 - **APIs:** Tavily (Search)
 
 ---
