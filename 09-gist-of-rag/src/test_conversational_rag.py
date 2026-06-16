@@ -41,7 +41,7 @@
 #   incoming message before it hits the business logic (retrieval).
 #
 # PREREQUISITES:
-#   - Run test_pdf_rag.py first to populate Pinecone with your PDF vectors
+#   - Run test_multimodal_pdf_rag.py first to populate Pinecone with your PDF vectors
 #   - .env file with: OPENAI_API_KEY, PINECONE_API_KEY, INDEX_NAME
 #
 # USAGE:

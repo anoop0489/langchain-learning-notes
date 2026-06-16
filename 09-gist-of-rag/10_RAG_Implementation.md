@@ -456,7 +456,7 @@ Later in the course: **LangGraph-based Agentic RAG** — research-backed archite
 
 The examples above cover the foundational RAG pipeline. Two real-world patterns extend this significantly:
 
-### 1. Multimodal PDF RAG — [`src/test_pdf_rag.py`](src/test_pdf_rag.py)
+### 1. Multimodal PDF RAG — [`src/test_multimodal_pdf_rag.py`](src/test_multimodal_pdf_rag.py)
 
 **Problem:** Production PDFs contain diagrams, flowcharts, tables, and complex layouts. Text-only loaders (`PyPDFLoader`) silently lose all visual information.
 
@@ -471,7 +471,7 @@ The examples above cover the foundational RAG pipeline. Two real-world patterns 
 
 **Key insight:** You only ingest once. Spending $1 to process a 50-page PDF properly is worth it if every query against it returns accurate results instead of missing diagram context.
 
-→ Run: `uv run test_pdf_rag.py`
+→ Run: `uv run test_multimodal_pdf_rag.py`
 
 ---
 
