@@ -283,18 +283,63 @@ Regular databases search by exact match (`WHERE name = 'laptop'`). Vector databa
 
 > **Production tip**: Deploy your vector store in the same cloud region as your RAG application. Cross-region calls add latency and egress costs.
 
-#### Setting Up Pinecone
+#### Setting Up Pinecone (Step-by-Step Console Walkthrough)
 
-1. Go to [pinecone.io](https://pinecone.io) → Create account (free tier)
-2. Create an index: set dimensions=1536, metric=cosine, type=dense
-3. Generate an API key
-4. Add to `.env`:
+1. **Create an Account**
+   - Go to [pinecone.io](https://pinecone.io) → Click **"Sign Up Free"**
+   - You can sign up with Google, GitHub, or email
+   - The **free tier** (Starter plan) is more than enough for this course — it gives you 1 project, 5 serverless indexes, and 2GB of storage
+
+2. **Create a New Index**
+   - After logging in, you land on the **Dashboard**
+   - Click **"Create Index"** (top-right button)
+   - Fill in the form:
+
+   | Field | What to Select | Why |
+   |-------|---------------|-----|
+   | **Index Name** | `event-tracking-pdf-index` (or any descriptive name) | This goes into your `.env` as `INDEX_NAME`. Use lowercase with hyphens. |
+   | **Dimensions** | `1536` | ⚠️ **Must match your embedding model's output size.** OpenAI's `text-embedding-ada-002` (LangChain's default) outputs 1536-dimensional vectors. If you use a different model, check its docs. |
+   | **Metric** | `cosine` | Measures the angle between vectors. Best default for text similarity. Other options: `euclidean` (spatial distance) or `dotproduct` (magnitude-sensitive). |
+   | **Type** | `Dense` | Standard for text embeddings. "Sparse" is for keyword/BM25-style search. |
+   | **Capacity Mode** | `Serverless` | No infrastructure to manage, scales automatically, pay-per-query. The alternative "Pod-based" gives dedicated compute but costs more and requires capacity planning. |
+   | **Cloud Provider** | `AWS` | Any provider works; AWS has the most regions. |
+   | **Region** | `us-east-1` (Virginia) | Choose the region closest to you or your app. For production: **same region as your application** to avoid cross-region latency and egress costs. |
+
+   - Click **"Create Index"**
+   - Wait ~30 seconds for the index to become **"Ready"** (green status)
+
+3. **Generate an API Key**
+   - In the left sidebar, click **"API Keys"**
+   - You should see a **Default** key already created
+   - Click the **copy icon** to copy the key (it starts with `pcsk_...`)
+   - ⚠️ **Save this immediately** — you can view it again later, but treat it like a password
+
+4. **Add to Your `.env` File**
    ```bash
-   PINECONE_API_KEY=pcsk_...        # LangChain looks for this exact env var name
-   INDEX_NAME=medium-blogs-embeddings-index
+   PINECONE_API_KEY=pcsk_xxxxxxxxxxxxxxxxxxxxxxxx
+   INDEX_NAME=event-tracking-pdf-index
    ```
 
-> **Note**: `PINECONE_API_KEY` is the exact environment variable name that LangChain's Pinecone integration expects. If you name it differently, the integration won't auto-detect it.
+   > ⚠️ **`PINECONE_API_KEY` must use this exact name.** LangChain's Pinecone integration auto-detects this environment variable. If you rename it (e.g., `PINECONE_KEY`), LangChain won't find it and you'll get authentication errors.
+
+5. **Verify Your Index Is Working**
+   - Back in the Pinecone console, click on your index name
+   - You should see a dashboard showing:
+     - **Vectors**: 0 (empty, ready for ingestion)
+     - **Dimensions**: 1536
+     - **Metric**: cosine
+     - **Status**: Ready
+   - After running the ingestion script, come back here — you'll see the vector count increase
+
+#### Common Mistakes When Creating the Index
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Wrong dimensions (e.g., 768 instead of 1536) | `ValueError: vector dimension mismatch` during ingestion | Delete the index and recreate with 1536 (must match your embedding model) |
+| Using "Pod-based" instead of "Serverless" | Higher costs, requires capacity planning | Serverless is fine for development and most production workloads |
+| Wrong metric (e.g., `dotproduct` instead of `cosine`) | Retrieval returns irrelevant results | Delete and recreate — metric cannot be changed after creation |
+| Forgetting to copy the API key | `AuthenticationError` when running scripts | Go to API Keys in the sidebar and copy again |
+| Naming the env var `PINECONE_KEY` instead of `PINECONE_API_KEY` | `PineconeApiKeyError: API key is required` | LangChain expects the exact name `PINECONE_API_KEY` |
 
 #### Data Structure in Pinecone
 

@@ -133,20 +133,25 @@ Starting from Module 09, we use **Pinecone** as our managed vector database for 
 
 ### Setup
 
-1. **Sign up** at [pinecone.io](https://pinecone.io/) — the free tier is sufficient for this course.
-2. **Create an index** in the Pinecone console:
-   - **Dimensions**: `1536` (must match your embedding model — OpenAI `text-embedding-ada-002` outputs 1536)
+1. **Sign up** at [pinecone.io](https://pinecone.io/) — the free tier (Starter plan) gives you 1 project, 5 indexes, and 2GB storage. More than enough for this course.
+2. **Create an index** in the Pinecone console — click **"Create Index"** and fill in:
+   - **Index Name**: A descriptive name like `event-tracking-pdf-index` (lowercase, hyphens only). This goes into your `.env` as `INDEX_NAME`.
+   - **Dimensions**: `1536` — ⚠️ must match your embedding model. OpenAI's `text-embedding-ada-002` (LangChain's default) outputs 1536 dimensions. Wrong value = `ValueError` during ingestion.
    - **Metric**: `cosine` (default, best for text similarity)
-   - **Type**: `Dense`
-   - **Capacity Mode**: `Serverless`
-3. **Generate an API key** in the Pinecone console → API Keys.
+   - **Type**: `Dense` (standard for text embeddings; "Sparse" is for keyword/BM25-style search)
+   - **Capacity Mode**: `Serverless` (no infra to manage, scales automatically, pay-per-query)
+   - **Cloud/Region**: `AWS` / `us-east-1` (or any region closest to you; for production use the same region as your app)
+   - Click **"Create Index"** and wait ~30 seconds for status to turn green ("Ready")
+3. **Generate an API key** — go to **API Keys** in the left sidebar. A default key is auto-created. Copy it (starts with `pcsk_...`).
 4. **Add to your `.env`**:
    ```bash
    PINECONE_API_KEY=pcsk_xxxxxxxxxxxxxxxxxxxxxxxx
-   INDEX_NAME=medium-blogs-embeddings-index
+   INDEX_NAME=event-tracking-pdf-index
    ```
 
-> ⚠️ **`PINECONE_API_KEY` must be this exact name** — LangChain's Pinecone integration auto-detects it from the environment. If you rename it, LangChain won't find it.
+> ⚠️ **`PINECONE_API_KEY` must be this exact name** — LangChain's Pinecone integration auto-detects it from the environment. If you rename it (e.g., `PINECONE_KEY`), LangChain won't find it and you'll get authentication errors.
+
+> 💡 **Cannot change dimensions or metric after creation.** If you pick the wrong value, you must delete the index and recreate it. This is the #1 setup mistake.
 
 ### Verify
 
