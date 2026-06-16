@@ -18,13 +18,15 @@ We build a complete RAG system that:
 ```
 09-gist-of-rag/
 ├── assets/
-│   └── basic_rag_pipeline.png     # Visual diagram of the pipeline
+│   └── basic_rag_pipeline.png          # Visual diagram of the pipeline
 ├── src/
-│   ├── mediumblog.txt             # Sample document (Medium blog about vector DBs)
-│   ├── ingestion.py               # Phase 1: Load → Chunk → Embed → Store
-│   └── main.py                    # Phase 2: Retrieve → Augment → Generate
-├── 09_RAG_Theory_And_Concepts.md  # Theory & definitions (previous file)
-└── 10_RAG_Implementation.md       # This file (implementation walkthrough)
+│   ├── mediumblog.txt                  # Sample document (Medium blog about vector DBs)
+│   ├── ingestion.py                    # Phase 1: Load → Chunk → Embed → Store
+│   ├── main.py                         # Phase 2: Retrieve → Augment → Generate
+│   ├── test_multimodal_pdf_rag.py      # PDF RAG with 4-loader comparison (vision default)
+│   └── test_conversational_rag.py      # Multi-turn RAG with question reformulation
+├── 09_RAG_Theory_And_Concepts.md       # Theory & definitions (previous file)
+└── 10_RAG_Implementation.md            # This file (implementation walkthrough)
 ```
 
 ---
