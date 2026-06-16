@@ -20,7 +20,7 @@ We build a complete RAG system that:
 ├── assets/
 │   └── basic_rag_pipeline.png     # Visual diagram of the pipeline
 ├── src/
-│   ├── mediumblog1.txt            # Sample document (Medium blog about vector DBs)
+│   ├── mediumblog.txt             # Sample document (Medium blog about vector DBs)
 │   ├── ingestion.py               # Phase 1: Load → Chunk → Embed → Store
 │   └── main.py                    # Phase 2: Retrieve → Augment → Generate
 ├── 09_RAG_Theory_And_Concepts.md  # Theory & definitions (previous file)
@@ -57,7 +57,7 @@ The ingestion pipeline runs **once** (or when documents change) to populate the 
 ### Pipeline Flow
 
 ```
-mediumblog1.txt → TextLoader → Document → CharacterTextSplitter → 20 Chunks
+mediumblog.txt → TextLoader → Document → CharacterTextSplitter → 20 Chunks
 																	   ↓
 											  Pinecone ← OpenAIEmbeddings ← Chunks
 ```
@@ -67,7 +67,7 @@ mediumblog1.txt → TextLoader → Document → CharacterTextSplitter → 20 Chu
 #### Step 1: Load the Document
 
 ```python
-loader = TextLoader("mediumblog1.txt")
+loader = TextLoader("mediumblog.txt")
 document = loader.load()  # Returns List[Document] with one Document
 ```
 
@@ -76,7 +76,7 @@ document = loader.load()  # Returns List[Document] with one Document
 - Returns a list containing one `Document` object
 - The `Document` has:
   - `page_content`: The full text of the file
-  - `metadata`: `{"source": "mediumblog1.txt"}`
+  - `metadata`: `{"source": "mediumblog.txt"}`
 
 **Why LangChain's `TextLoader`?**  
 Same interface for all sources. Replace `TextLoader` with `PyPDFLoader`, `NotionDirectoryLoader`, `SlackChatLoader`, etc. — the downstream code stays the same.
@@ -281,6 +281,19 @@ Input: {"question": "what is Pinecone?"}
 **`format_docs` as a function in the chain**
 - Regular Python functions in LCEL chains are auto-converted to `RunnableLambda`
 - No need to wrap it — just pipe it directly
+- The `RunnableLambda` wrapper gives it `invoke()`, `stream()`, `batch()`, and `ainvoke()` methods
+- Eden notes: "When we use regular Python functions in a LCEL chain, LangChain automatically converts them into runnable lambdas that adhere to the runnable interface"
+
+**`StrOutputParser()`**
+- The LLM returns an `AIMessage` object (with `.content`, `.tool_calls`, etc.)
+- `StrOutputParser()` simply extracts the `.content` string
+- Equivalent to: `lambda msg: msg.content`
+- Makes the chain output a clean string instead of a message object
+
+**Why the function returns a chain (not taking arguments)**
+- Notice `create_retrieval_chain_with_lcel()` takes **no arguments** and returns a chain
+- The chain itself is a Runnable — you call `.invoke({"question": "..."})` on it
+- This is LangChain's pattern: build chains as reusable objects, invoke them separately
 
 #### Advantages Over Naive Approach
 

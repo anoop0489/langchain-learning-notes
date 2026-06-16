@@ -5,7 +5,7 @@
 # store with embedded document chunks. It is the "offline" phase of RAG.
 #
 # Pipeline:
-#   mediumblog1.txt → TextLoader → Document → CharacterTextSplitter → Chunks
+#   mediumblog.txt → TextLoader → Document → CharacterTextSplitter → Chunks
 #                                                                        ↓
 #                                    Pinecone ← OpenAIEmbeddings ← 20 Chunks
 #
@@ -43,8 +43,8 @@ if __name__ == "__main__":
     # The interface is always the same: loader.load() → List[Document]
     #
     # NOTE: If you get UnicodeDecodeError, add encoding="utf-8" parameter:
-    #   TextLoader("mediumblog1.txt", encoding="utf-8")
-    loader = TextLoader("mediumblog1.txt")
+    #   TextLoader("mediumblog.txt", encoding="utf-8")
+    loader = TextLoader("mediumblog.txt")
     document = loader.load()
 
     # =========================================================================
