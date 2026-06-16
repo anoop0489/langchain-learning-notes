@@ -456,7 +456,7 @@ Later in the course: **LangGraph-based Agentic RAG** — research-backed archite
 
 The examples above cover the foundational RAG pipeline. Two real-world patterns extend this significantly:
 
-### 1. Multimodal PDF RAG (`src/test_pdf_rag.py`)
+### 1. Multimodal PDF RAG — [`src/test_pdf_rag.py`](src/test_pdf_rag.py)
 
 **Problem:** Production PDFs contain diagrams, flowcharts, tables, and complex layouts. Text-only loaders (`PyPDFLoader`) silently lose all visual information.
 
@@ -475,7 +475,7 @@ The examples above cover the foundational RAG pipeline. Two real-world patterns 
 
 ---
 
-### 2. Conversational RAG (`src/test_conversational_rag.py`)
+### 2. Conversational RAG — [`src/test_conversational_rag.py`](src/test_conversational_rag.py)
 
 **Problem:** Single-shot RAG forgets everything between questions. Follow-ups with pronouns break retrieval:
 - Q1: "What is CTS?" → works fine
