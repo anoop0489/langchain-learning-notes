@@ -449,3 +449,53 @@ Later in the course: **LangGraph-based Agentic RAG** — research-backed archite
 | **RunnablePassthrough.assign** | Keep the input, compute and add new keys |
 | **Agentic vs Deterministic** | If retrieval should always happen, don't make it optional |
 | **LangSmith** | LCEL = one trace for the entire pipeline = easy debugging |
+
+---
+
+## Beyond Basic RAG: Production Extensions
+
+The examples above cover the foundational RAG pipeline. Two real-world patterns extend this significantly:
+
+### 1. Multimodal PDF RAG (`src/test_pdf_rag.py`)
+
+**Problem:** Production PDFs contain diagrams, flowcharts, tables, and complex layouts. Text-only loaders (`PyPDFLoader`) silently lose all visual information.
+
+**Solution:** Convert each PDF page to an image and use GPT-4o Vision to "read" it — text, tables, diagrams, and all.
+
+| Loader | Text | Tables | Diagrams | Cost |
+|--------|:----:|:------:|:--------:|------|
+| PyPDFLoader | ✅ | ❌ | ❌ | Free |
+| PyMuPDFLoader | ✅ | ⚠️ | ❌ | Free |
+| UnstructuredPDFLoader | ✅ | ✅ | ❌ | Free* |
+| **Multimodal Vision (GPT-4o)** | ✅ | ✅ | ✅ | ~$0.01-0.03/page |
+
+**Key insight:** You only ingest once. Spending $1 to process a 50-page PDF properly is worth it if every query against it returns accurate results instead of missing diagram context.
+
+→ Run: `uv run test_pdf_rag.py`
+
+---
+
+### 2. Conversational RAG (`src/test_conversational_rag.py`)
+
+**Problem:** Single-shot RAG forgets everything between questions. Follow-ups with pronouns break retrieval:
+- Q1: "What is CTS?" → works fine
+- Q2: "How does the Hub connect to **it**?" → retriever searches for "it" → garbage results
+
+**Solution:** **Question reformulation** — before searching, use the LLM to rewrite follow-ups as standalone queries:
+```
+"How does the Hub connect to it?"
+  → Reformulated: "How does the Hub connect to the Centralized Tracking System (CTS)?"
+```
+
+**Two cases handled:**
+1. Follow-up referencing prior context → reformulate (resolve pronouns)
+2. Completely new topic → return unchanged (don't over-connect)
+
+**Architecture:** `User Question → Reformulate → Retrieve → Generate → Update History`
+
+**Production memory strategies:**
+- **Short conversations** → keep last N turns in a list (our approach)
+- **Long conversations** → `ConversationSummaryMemory` (summarizes older turns)
+- **Persistent across sessions** → store in a database (Redis, PostgreSQL)
+
+→ Run: `uv run test_conversational_rag.py`
