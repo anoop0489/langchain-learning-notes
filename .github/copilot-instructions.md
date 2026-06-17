@@ -116,4 +116,4 @@ XX-section-name/
 | 4-7. Agents Under the Hood | `04-07-agents-under-the-hood/` | ✅ Complete |
 | 8. Function Calling | `08-function-calling/` | ✅ Complete |
 | 9. GIST of RAG | `09-gist-of-rag/` | ✅ Complete |
-| 10. Documentation Assistant | `10-documentation-assistant/` | 🔲 Next |
+| 10. Documentation Assistant | `10-documentation-assistant/` | 🔲 In Progress |

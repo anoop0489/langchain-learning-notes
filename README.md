@@ -38,6 +38,12 @@ Retrieval Augmented Generation — from theory to a fully working pipeline with 
 * [09. RAG Theory & Concepts (Embeddings, Vector DBs, Chunking)](./09-gist-of-rag/09_RAG_Theory_And_Concepts.md)
 * [10. RAG Implementation (Ingestion & Retrieval Pipelines)](./09-gist-of-rag/10_RAG_Implementation.md)
 
+### Section 10: Documentation Assistant 🤖💬
+*Folder: [`/10-documentation-assistant`](./10-documentation-assistant)*
+Building a production documentation helper — web crawling, agentic RAG, Streamlit UI, and memory.
+* [11. Doc Assistant Theory & Concepts (Tavily, Agents, Streamlit, Memory)](./10-documentation-assistant/11_DocAssistant_Theory_And_Concepts.md)
+* [12. Doc Assistant Implementation (Crawl → Agent → Chat UI)](./10-documentation-assistant/12_DocAssistant_Implementation.md)
+
 ---
 
 ## 📖 Reference Guides
