@@ -19,16 +19,19 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 Each module adds its own dependencies. Here's the full list across the course:
 
-| Module | Command |
-| :--- | :--- |
-| **01 - Fundamentals** | `uv add langchain langchain-openai python-dotenv` |
-| **03 - LangSmith** | `uv add langsmith` |
-| **04 - Agents Under the Hood** | `uv add langchain langchain-ollama langchain-openai python-dotenv black isort` |
-| **09 - RAG (Embeddings & Retrieval)** | `uv add langchain-pinecone langchain-community langchain-text-splitters` |
+| Module | Command | Key Packages |
+| :--- | :--- | :--- |
+| **01 - Fundamentals** | `uv add langchain langchain-openai python-dotenv truststore` | Core LangChain + OpenAI + secrets + SSL |
+| **03 - LangSmith** | `uv add langsmith` | Tracing & observability |
+| **04-07 - Agents Under the Hood** | `uv add ollama langsmith httpx` | Local LLM (Ollama), tracing, HTTP client |
+| **09 - RAG (Embeddings & Retrieval)** | `uv add langchain-pinecone langchain-community langchain-text-splitters pymupdf pypdf pdf2image` | Vector store, PDF loaders, chunking |
+| **10 - Documentation Assistant** | `uv add langchain-tavily streamlit` | Web crawling (Tavily), chat UI (Streamlit) |
 
-Or install everything at once:
+> 💡 Some packages listed above depend on earlier modules. For example, Module 10 still needs `langchain-openai` and `langchain-pinecone` from Module 09.
+
+Or install everything at once (matches `pyproject.toml`):
 ```bash
-uv add langchain langchain-openai langchain-ollama langchain-pinecone langchain-community langchain-text-splitters langsmith python-dotenv black isort
+uv add langchain langchain-openai langchain-ollama langchain-pinecone langchain-community langchain-text-splitters langchain-tavily langsmith ollama python-dotenv truststore httpx requests urllib3 pymupdf pypdf pdf2image streamlit
 ```
 
 ---
@@ -80,7 +83,7 @@ Then fill in your actual keys:
 | `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | All modules (GPT-4o) |
 | `LANGCHAIN_API_KEY` | [smith.langchain.com](https://smith.langchain.com/) → Settings → API Keys | LangSmith tracing |
 | `LANGCHAIN_TRACING_V2` | Set to `true` to enable tracing | LangSmith tracing |
-| `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) → Dashboard → API Keys | Agent search tool |
+| `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) → Dashboard → API Keys | Agent search tool (Section 4-7+) |
 | `PINECONE_API_KEY` | [pinecone.io](https://pinecone.io/) → API Keys (free tier) | RAG vector store (Section 9+) |
 | `INDEX_NAME` | Pinecone console → your index name | RAG vector store (Section 9+) |
 
@@ -200,7 +203,7 @@ uv init
 
 # 2. Add our core dependencies 
 # (This creates the hidden .venv folder and downloads the packages)
-uv add langchain langchain-openai python-dotenv
+uv add langchain langchain-openai python-dotenv truststore
 ```
 
 Next, right-click in Solution Explorer, add a new text file named `.env`, and add your API key:

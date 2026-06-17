@@ -73,13 +73,19 @@ XX-section-name/
 |----------|--------|-----|
 | Vector database | Pinecone (serverless, cosine, 1536 dims) | Course default, free tier sufficient |
 | Embedding model | OpenAI `text-embedding-ada-002` (LangChain default) | 1536 dimensions, widely used |
-| LLM | GPT-4o via `ChatOpenAI` | Best quality for multimodal and generation |
+| LLM (Cloud) | GPT-4o via `ChatOpenAI` | Best quality for multimodal and generation |
+| LLM (Local) | Ollama (`qwen3:1.7b` or similar) via `ollama` package | Free, no API costs, tool-calling support |
 | PDF loader | Multimodal Vision (PyMuPDF + GPT-4o) as default | Production PDFs have diagrams |
+| PDF libraries | `pymupdf` (primary, Section 9), `pypdf` (fallback), `pdf2image` (image extraction) | Full coverage of PDF processing needs |
 | RAG architecture | Deterministic (not agentic) | Lower cost, predictable, production-safe |
 | Indexing strategy | `SQLRecordManager` + `cleanup="incremental"` | Prevents duplicates, saves embedding costs |
 | Conversational RAG | Question reformulation with conservative prompt | Handles follow-ups without over-connecting new topics |
+| Agent search tool | Tavily via `langchain-tavily` (Section 10) | LangChain integration for web crawling/search |
+| HTTP client | `httpx` (Section 4-7, async SSL workaround) | Used for custom SSL context in agent scripts |
 | SSL | `truststore.inject_into_ssl()` | Corporate proxy requires Windows cert store |
 | Streaming | `.stream()` / `.astream()` on same LCEL chain | No pipeline changes needed |
+| Observability | LangSmith (`langsmith` package) | Tracing, debugging, evaluation |
+| UI (prototyping) | Streamlit (`streamlit`, Section 10) | Fast chatbot/demo UIs without frontend code |
 
 ---
 
@@ -103,6 +109,31 @@ XX-section-name/
 - Don't rename existing files without asking.
 - Don't assume open-source repo files match — always read the workspace files.
 - Don't push to remote without explicit permission.
+
+---
+
+## Full Dependency List (from `pyproject.toml`)
+
+| Package | Purpose |
+|---------|--------|
+| `langchain` | Core orchestration framework |
+| `langchain-openai` | OpenAI ChatGPT/Embeddings integration |
+| `langchain-ollama` | Local LLM via Ollama |
+| `langchain-pinecone` | Pinecone vector store integration |
+| `langchain-community` | Community integrations (loaders, tools) |
+| `langchain-text-splitters` | Document chunking strategies |
+| `langchain-tavily` | Tavily web search tool for agents |
+| `langsmith` | Observability, tracing, evaluation |
+| `ollama` | Direct Ollama Python client |
+| `python-dotenv` | `.env` file loading |
+| `truststore` | Windows cert store injection (corporate proxy) |
+| `httpx` | Async-capable HTTP client |
+| `requests` | Standard HTTP client |
+| `urllib3` | Low-level HTTP library |
+| `pymupdf` | PDF parsing (primary, supports images) |
+| `pypdf` | PDF parsing (fallback, pure Python) |
+| `pdf2image` | PDF page to image conversion |
+| `streamlit` | Rapid UI prototyping for chatbots/demos |
 
 ---
 
