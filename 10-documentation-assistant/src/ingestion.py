@@ -53,7 +53,11 @@ load_dotenv()
 CRAWL_URL = "https://python.langchain.com/"
 
 # How deep to follow links from the start URL
-MAX_DEPTH = 2
+MAX_DEPTH = 1
+
+# Max pages to process (set to None for all pages, or a number for testing)
+# For testing: 1-3 pages is enough to verify the pipeline works end-to-end
+MAX_PAGES = 1
 
 # Chunk size for splitting (4000 = keeps full code examples + explanation together)
 CHUNK_SIZE = 4000
@@ -64,9 +68,9 @@ CHUNK_OVERLAP = 200
 # How many documents to send to Pinecone in one async batch
 BATCH_SIZE = 50
 
-# Pinecone index name — dedicated to this section (Section 10: Documentation Assistant)
-# Create in Pinecone console: dimensions=1536, metric=cosine, serverless
-INDEX_NAME = os.environ.get("INDEX_NAME", "doc-helper-index")
+# Pinecone index name — hardcoded for Section 10 (ignores .env INDEX_NAME
+# which is used by Section 9). Create in Pinecone: dims=1536, cosine, serverless
+INDEX_NAME = "doc-helper-index"
 # =================================================================
 
 
@@ -139,6 +143,12 @@ def crawl_documentation() -> list[Document]:
         )
 
     print(f"   ✅ Crawled {len(all_docs)} pages")
+
+    # Limit pages for testing (remove or set MAX_PAGES=None for full ingestion)
+    if MAX_PAGES and len(all_docs) > MAX_PAGES:
+        all_docs = all_docs[:MAX_PAGES]
+        print(f"   🧪 TEST MODE: Limited to {MAX_PAGES} page(s)")
+
     if all_docs:
         print(f"   📋 Sample: {all_docs[0].metadata['source']}")
         print(f"      Content: \"{all_docs[0].page_content[:100]}...\"")

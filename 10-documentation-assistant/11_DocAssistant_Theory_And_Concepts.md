@@ -14,13 +14,14 @@ A comprehensive guide to building a production-grade documentation assistant: we
 | 2 | [What We're Building](#what-were-building) | End-to-end architecture of the documentation helper |
 | 3 | [Web Crawling with Tavily](#deep-dive-web-crawling-with-tavily) | TavilyCrawl, TavilyMap, TavilyExtract — all three products in detail |
 | 4 | [RecursiveCharacterTextSplitter](#deep-dive-recursivecharactertextsplitter) | Why it's better than CharacterTextSplitter, how it splits hierarchically |
-| 5 | [Async Batch Ingestion](#deep-dive-async-batch-ingestion) | Python async/await for C# devs, concurrent batching, `asyncio.gather()` |
-| 6 | [Agentic RAG with Tools](#deep-dive-agentic-rag-with-tools) | `create_agent()`, `@tool` decorator, `content_and_artifact` pattern |
-| 7 | [init_chat_model()](#deep-dive-init_chat_model) | Provider-agnostic model initialization |
-| 8 | [Streamlit Chat UI](#deep-dive-streamlit-chat-ui) | Building interactive chat interfaces, session state, streaming |
-| 9 | [Memory via Session State](#deep-dive-memory-via-session-state) | How Streamlit's session state provides conversational memory |
-| 10 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | When agentic makes sense (this project) vs when it doesn't |
-| 11 | [Interview Q&A](#interview-qa-anchors) | 15 interview questions with production-grade answers |
+| 5 | [Pinecone Integrated vs Bring Your Own](#deep-dive-pinecone-integrated-vs-bring-your-own-embeddings) | Why we embed with OpenAI and just store in Pinecone |
+| 6 | [Async Batch Ingestion](#deep-dive-async-batch-ingestion) | Python async/await for C# devs, concurrent batching, `asyncio.gather()` |
+| 7 | [Agentic RAG with Tools](#deep-dive-agentic-rag-with-tools) | `create_agent()`, `@tool` decorator, `content_and_artifact` pattern |
+| 8 | [init_chat_model()](#deep-dive-init_chat_model) | Provider-agnostic model initialization |
+| 9 | [Streamlit Chat UI](#deep-dive-streamlit-chat-ui) | Building interactive chat interfaces, session state, streaming |
+| 10 | [Memory via Session State](#deep-dive-memory-via-session-state) | How Streamlit's session state provides conversational memory |
+| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | When agentic makes sense (this project) vs when it doesn't |
+| 12 | [Interview Q&A](#interview-qa-anchors) | 16 interview questions with production-grade answers |
 
 ---
 
@@ -421,6 +422,83 @@ The trade-off: larger chunks are less precise (might include some irrelevant tex
 | `CodeTextSplitter` | Language-aware splitting | Source code |
 
 **Rule of thumb:** Use `RecursiveCharacterTextSplitter` as your default unless you have a specific reason not to.
+
+---
+
+## Deep Dive: Pinecone "Integrated" vs "Bring Your Own" Embeddings
+
+### The Confusion
+
+When you create a Pinecone index in their UI, they now ask you to **select an embedding model**. This is confusing because our code ALSO specifies an embedding model (`OpenAIEmbeddings`). Are they the same thing? **No — they are two completely different approaches.**
+
+### The Two Approaches
+
+#### Approach A: Pinecone Integrated (UI selects model)
+
+```
+Your code sends TEXT string → Pinecone → Pinecone calls embedding model → Pinecone stores vector
+```
+
+- You select a model in Pinecone's UI (e.g., "multilingual-e5-large")
+- Your code sends **raw text** to Pinecone's API
+- Pinecone does the embedding AND storing in one step
+- You do NOT use `OpenAIEmbeddings` in your code
+- Pinecone charges you extra for the embedding compute
+
+#### Approach B: Bring Your Own Vectors ← **What we use**
+
+```
+Your code sends TEXT → OpenAI API → returns [0.023, -0.041, ..., 0.012] (1536 floats)
+                                                         ↓
+                                     Your code sends these floats → Pinecone stores them
+```
+
+- You do NOT select a model in Pinecone's UI — just set `dimensions=1536`
+- Your code calls `OpenAIEmbeddings(model="text-embedding-3-small")` to get vectors
+- Then sends those pre-computed vectors (arrays of 1536 numbers) to Pinecone
+- Pinecone just stores numbers — it doesn't know or care what model made them
+- You pay OpenAI directly for embedding (cheaper, more flexible)
+
+### Side-by-Side Comparison
+
+| | Approach A (Pinecone embeds) | Approach B (We embed) ← **Ours** |
+|--|--|--|
+| **What you send to Pinecone** | Raw text strings | Pre-computed float arrays |
+| **Who calls the embedding model** | Pinecone (internally) | Our Python code |
+| **Who pays for embedding** | Pinecone bill (more expensive) | OpenAI bill (cheaper) |
+| **Model flexibility** | Only Pinecone's supported models | ANY model (OpenAI, Cohere, local) |
+| **LangChain compatibility** | Doesn't work with `PineconeVectorStore` | Works perfectly |
+| **When creating the index** | Select a model in UI | Select "Bring your own" / set dims manually |
+
+### Why We Use Approach B
+
+1. **LangChain's `PineconeVectorStore` sends pre-computed vectors** — it calls `embeddings.embed_documents()` first, then sends the resulting floats to Pinecone
+2. **Flexibility** — we can swap from OpenAI to Cohere to a local model without touching Pinecone
+3. **Cost** — OpenAI embedding is cheaper than Pinecone's integrated embedding
+4. **Control** — we can cache embeddings, retry failed ones, batch them ourselves
+
+### What to Select in Pinecone UI
+
+When creating the index:
+- ❌ Do NOT select an embedding model from their dropdown
+- ✅ Choose **"Bring your own"** / **"Custom"** / **"Manual configuration"**
+- ✅ Set **dimensions = 1536** (matches `text-embedding-3-small`)
+- ✅ Set **metric = cosine**
+
+Or skip the UI entirely and create programmatically:
+```python
+from pinecone import Pinecone
+pc = Pinecone(api_key="...")
+pc.create_index(name="doc-helper-index", dimension=1536, metric="cosine",
+                spec={"serverless": {"cloud": "aws", "region": "us-east-1"}})
+```
+
+### C# Analogy
+
+| Approach | C# Equivalent |
+|----------|---------------|
+| **A (Pinecone embeds)** | SQL Server Full-Text Search — the DB does indexing internally |
+| **B (We embed)** | You compute a hash/vector in C# code, then store it in a `FLOAT[]` column — the DB just stores what you give it |
 
 ---
 
@@ -942,6 +1020,10 @@ The documentation helper is an exploratory tool — users ask varied questions, 
 **Q: What is the Python `async/await` equivalent of C#'s `Task.WhenAll()`?**
 
 > **A:** `asyncio.gather(*tasks)` is the direct equivalent. You create a list of coroutines (tasks), pass them to `gather()`, and await the result. Unlike C#'s `Task.Run()`, Python coroutines don't start executing until they're awaited or scheduled — calling `async def func()` just returns a coroutine object. You must use `await`, `asyncio.gather()`, or `asyncio.create_task()` to actually execute them.
+
+**Q: When creating a Pinecone index, should you select an embedding model in the UI?**
+
+> **A:** Only if you want Pinecone to do the embedding for you (Integrated approach — you send raw text, Pinecone embeds + stores). If you're using LangChain's `PineconeVectorStore` with `OpenAIEmbeddings`, select "Bring your own vectors" and set dimensions=1536 manually. Your code calls OpenAI to get vectors, then sends those pre-computed floats to Pinecone for storage. This gives you full control over the embedding model and is cheaper.
 
 ---
 

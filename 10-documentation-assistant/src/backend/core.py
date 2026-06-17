@@ -51,9 +51,9 @@ load_dotenv()
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Connect to the existing Pinecone index (populated by ingestion.py)
-# Defaults to "doc-helper-index" — dedicated to Section 10
+# Hardcoded for Section 10 — ignores .env INDEX_NAME (that's Section 9's index)
 vectorstore = PineconeVectorStore(
-    index_name=os.environ.get("INDEX_NAME", "doc-helper-index"),
+    index_name="doc-helper-index",
     embedding=embeddings,
 )
 
