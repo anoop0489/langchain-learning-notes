@@ -4,6 +4,8 @@ Step-by-step implementation guide: crawling documentation, building an agentic R
 
 *Based on Section 10: Chapters 51–66 (Documentation Helper Project)*
 
+> 📖 **Theory & Concepts:** [11_DocAssistant_Theory_And_Concepts.md](11_DocAssistant_Theory_And_Concepts.md)
+
 ---
 
 ## Project Overview

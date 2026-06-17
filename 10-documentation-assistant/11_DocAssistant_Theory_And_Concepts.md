@@ -41,7 +41,7 @@ This is the first time the course builds a **user-facing application** — the c
 
 | Term | Quick Recall (say this first) | Full Definition |
 |------|------|------------|
-| **Tavily** | "AI-native web search/crawl API" | A search and crawling service designed specifically for AI applications — returns structured content (not raw HTML) that's ready for LLM consumption. Used here to crawl documentation sites. |
+| **Tavily** | "AI-native web search/crawl API" | A search and crawling service designed specifically for AI applications — returns structured content (not raw HTML) that's ready for LLM consumption. We use the **`langchain-tavily`** package (LangChain integration wrapper), not the raw `tavily-python` SDK. |
 | **TavilyCrawl** | "Website → structured content at scale" | Tavily's crawling API that traverses a website following links, extracting clean text content from each page. Returns structured results with URL, raw_content, and metadata. |
 | **TavilyMap** | "Discover all URLs on a site" | Maps a website's structure by finding all reachable URLs up to a configurable depth/breadth. Used to discover what pages exist before crawling them. |
 | **TavilyExtract** | "Single URL → clean content" | Extracts structured content from a specific URL. Like a smart scraper that returns clean text instead of raw HTML. |
@@ -115,6 +115,25 @@ Documentation sites are **live, dynamic, and linked**. You can't just download a
 3. **Handle** dynamic content (JavaScript-rendered pages)
 
 Tavily is an **AI-native** search/crawl API that handles all of this and returns clean, structured content ready for LLM consumption.
+
+### `langchain-tavily` vs `tavily-python` — Which Package?
+
+| Package | PyPI | What It Is |
+|---------|------|------------|
+| **`langchain-tavily`** | [langchain-tavily](https://pypi.org/project/langchain-tavily/) | LangChain integration — wraps Tavily's API into LangChain-compatible classes (`TavilyCrawl`, `TavilyMap`, `TavilyExtract`) that return results you can pipe directly into splitters and vector stores. **This is what we use.** |
+| `tavily-python` | [tavily-python](https://pypi.org/project/tavily-python/) | Tavily's standalone Python SDK — lower-level, returns raw dicts. Use this if you're NOT using LangChain. |
+
+```bash
+# We install the LangChain wrapper (it pulls tavily-python as a dependency)
+uv add langchain-tavily
+```
+
+```python
+# Import from the LangChain integration package
+from langchain_tavily import TavilyCrawl, TavilyMap, TavilyExtract
+```
+
+The `langchain-tavily` classes give you `.invoke()` / `.ainvoke()` compatibility, meaning they slot directly into LCEL chains and agent tool pipelines.
 
 ### The Three Tavily Tools
 
@@ -926,11 +945,24 @@ The documentation helper is an exploratory tool — users ask varied questions, 
 
 ---
 
+## Runnable Source Files
+
+All concepts in this doc are implemented as runnable scripts. See the implementation walkthrough and source code:
+
+| File | What It Implements | Link |
+|------|-------------------|------|
+| Implementation guide | Full step-by-step walkthrough | [12_DocAssistant_Implementation.md](12_DocAssistant_Implementation.md) |
+| Ingestion pipeline | TavilyCrawl → Chunk → Embed → Store | [src/ingestion.py](src/ingestion.py) |
+| Agentic RAG backend | `create_agent()` + `@tool` + `content_and_artifact` | [src/backend/core.py](src/backend/core.py) |
+| Streamlit chat UI | `st.session_state` + `st.chat_message` + sources | [src/main.py](src/main.py) |
+
+---
+
 ## References
 
 - [Tavily API Documentation](https://docs.tavily.com/)
 - [Tavily Crawl API Reference](https://docs.tavily.com/documentation/api-reference/endpoint/crawl)
-- [Tavily LangChain Integration (PyPI)](https://pypi.org/project/langchain-tavily/)
+- [Tavily LangChain Integration — `langchain-tavily` (PyPI)](https://pypi.org/project/langchain-tavily/)
 - [Streamlit Documentation](https://docs.streamlit.io/)
 - [LangChain Agents — create_agent](https://python.langchain.com/docs/how_to/tool_calling_agent/)
 - [LangChain Tools — @tool decorator](https://python.langchain.com/docs/how_to/custom_tools/)
@@ -940,4 +972,3 @@ The documentation helper is an exploratory tool — users ask varied questions, 
 - Eden's Jupyter Tutorials (in `documentation-helper-main/`):
   - `Tavily Demo Tutorial.ipynb` — TavilyMap + TavilyExtract hands-on
   - `Tavily Crawl Demo Tutorial.ipynb` — TavilyCrawl with vs without instructions
-- [Eden Marco — Documentation Helper (GitHub)](https://github.com/emarco177/documentation-helper)
