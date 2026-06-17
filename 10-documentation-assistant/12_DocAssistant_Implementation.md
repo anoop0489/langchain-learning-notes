@@ -43,7 +43,7 @@ uv add langchain langchain-openai langchain-pinecone langchain-tavily langchain-
 ```bash
 OPENAI_API_KEY=sk-...
 PINECONE_API_KEY=pcsk_...
-INDEX_NAME=langchain-docs-index
+INDEX_NAME=doc-helper-index
 TAVILY_API_KEY=tvly-...
 
 # LangSmith (optional but recommended)
@@ -348,3 +348,29 @@ st.session_state saves for memory
 | UI | CLI print statements | Streamlit web app |
 | Memory | Manual list + reformulation | `st.session_state` |
 | Ingestion scale | ~67 chunks | 1000+ chunks with async batching |
+
+---
+
+## Beyond Basic — Runnable Source Files
+
+All scripts below are fully commented with prerequisites, config, and run instructions:
+
+| File | What It Does | Run Command |
+|------|-------------|-------------|
+| [`src/ingestion.py`](src/ingestion.py) | Crawl → Chunk → Embed → Store (run once) | `uv run ingestion.py` |
+| [`src/backend/core.py`](src/backend/core.py) | Agentic RAG backend (standalone test) | `uv run backend/core.py` |
+| [`src/main.py`](src/main.py) | Streamlit chat UI (main app) | `streamlit run main.py` |
+
+### Quick Start (after `.env` is configured)
+
+```bash
+# 1. Install dependencies
+uv add langchain langchain-openai langchain-pinecone langchain-tavily langchain-text-splitters python-dotenv streamlit truststore
+
+# 2. Populate the vector store (one-time)
+cd 10-documentation-assistant/src
+uv run ingestion.py
+
+# 3. Launch the chat app
+streamlit run main.py
+```
