@@ -28,8 +28,18 @@ We build a complete **documentation assistant** that:
 	│   ├── __init__.py
 	│   └── core.py                          # Phase 2: Agent + retrieval tool
 	├── main.py                              # Phase 3: Streamlit chat UI
-	└── .streamlit/
-		└── config.toml                      # Streamlit theme configuration
+	├── .streamlit/
+	│   └── config.toml                      # Streamlit theme configuration
+	├── test_tavily_extract.py               # Quick Tavily demo script
+	├── _create_index.py                     # One-off Pinecone index creator
+	└── eden-original/                       # Eden Marco's original code (unmodified)
+		├── ingestion.py                     # Uses Chroma, certifi SSL, TavilyMap/Extract
+		├── backend/
+		│   ├── __init__.py
+		│   └── core.py                      # Uses gpt-5.2, langchain-docs-2026 index
+		├── main.py                          # Minimal Streamlit UI (no comments)
+		├── consts.py                        # INDEX_NAME constant
+		└── logger.py                        # Colored console logger
 ```
 
 ---
