@@ -1,4 +1,20 @@
-# Color codes for better logging
+# =============================================================================
+# EDEN'S ORIGINAL: Colored Console Logger (logger.py)
+# =============================================================================
+# Provides colored terminal output using ANSI escape codes.
+# Used by ingestion.py for readable pipeline progress in the terminal.
+#
+# Our enhanced version lives at: reference-guides/logger.py
+# (adds a __main__ demo block and expanded docblock)
+#
+# HOW ANSI COLORS WORK:
+#   \033[ is the "escape" prefix, followed by a code number and 'm'
+#   Example: \033[92m = bright green, \033[0m = reset to default
+#   Works on modern terminals (Windows Terminal, VS Code, PowerShell 7+)
+# =============================================================================
+
+
+# ANSI escape codes — each string activates a color/style when printed
 class Colors:
     PURPLE = "\033[95m"
     CYAN = "\033[96m"
@@ -9,7 +25,7 @@ class Colors:
     RED = "\033[91m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
-    END = "\033[0m"
+    END = "\033[0m"       # Reset — always append after colored text
 
 
 def log_info(message: str, color: str = Colors.CYAN):

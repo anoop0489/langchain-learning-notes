@@ -1,3 +1,32 @@
+# =============================================================================
+# EDEN'S ORIGINAL: Agentic RAG Backend (backend/core.py)
+# =============================================================================
+# This is Eden Marco's original backend — kept as-is for reference.
+# Compare with our adapted version at: ../../backend/core.py
+#
+# WHAT THIS DOES:
+#   Creates an agent that decides WHEN to search the documentation vector
+#   store. Uses LangChain's create_agent() with a retrieval tool.
+#
+# KEY PATTERNS:
+#   - create_agent(): Modern LangChain factory for tool-calling agents
+#   - @tool(response_format="content_and_artifact"): Returns two values:
+#       1. Serialized text → ToolMessage.content (what the LLM reads)
+#       2. Raw Document list → ToolMessage.artifact (what the app uses)
+#   - init_chat_model(): Provider-agnostic model init (swap provider easily)
+#   - ToolMessage artifact extraction: Loop through messages to find
+#     retrieved docs for source citations in the UI
+#
+# DIFFERENCES FROM OUR ADAPTED VERSION (../../backend/core.py):
+#   - Model: Uses gpt-5.2 (Eden's course recording) vs our gpt-4o
+#   - Index: "langchain-docs-2026" vs our "doc-helper-index"
+#   - No truststore/SSL handling (Eden handles SSL in ingestion.py only)
+#   - No sys.path manipulation
+#   - Minimal comments
+#
+# NOTE: This file is NOT meant to be run — it's a reference copy.
+# =============================================================================
+
 from typing import Any, Dict
 
 from dotenv import load_dotenv
@@ -10,14 +39,16 @@ from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 
-# Initialize embeddings (same as ingestion.py)
+# Same embedding model as ingestion — MUST match or vectors won't align
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-#Initialize vector store
+# Connect to Pinecone index populated by ingestion.py
+# Eden used "langchain-docs-2026" — we use "doc-helper-index"
 vectorstore = PineconeVectorStore(
     index_name="langchain-docs-2026", embedding=embeddings
 )
-# Initialize chat model
+# init_chat_model() is provider-agnostic — change model_provider to
+# "anthropic", "google_genai", etc. without touching other code
 model = init_chat_model("gpt-5.2", model_provider="openai")
 
 

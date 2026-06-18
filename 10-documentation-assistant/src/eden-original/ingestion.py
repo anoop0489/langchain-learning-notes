@@ -1,3 +1,31 @@
+# =============================================================================
+# EDEN'S ORIGINAL: Documentation Ingestion Pipeline (ingestion.py)
+# =============================================================================
+# This is Eden Marco's original ingestion script — kept as-is for reference.
+# Compare with our adapted version at: ../ingestion.py
+#
+# PIPELINE FLOW:
+#   1. TavilyCrawl crawls python.langchain.com (max_depth=2)
+#   2. Raw content → LangChain Document objects (one per page)
+#   3. RecursiveCharacterTextSplitter chunks docs (4000 chars, 200 overlap)
+#   4. Async batch storage into vector store (500 docs per batch)
+#
+# KEY DIFFERENCES FROM OUR ADAPTED VERSION (../ingestion.py):
+#   - Vector store: Uses Chroma (local) instead of Pinecone (cloud)
+#     Eden has Pinecone commented out — he demoed both in the course
+#   - SSL: Uses certifi package instead of truststore.inject_into_ssl()
+#   - Imports: Uses langchain_classic.text_splitter (older package)
+#     vs our langchain_text_splitters (current package)
+#   - All three Tavily tools initialized (TavilyCrawl, TavilyExtract,
+#     TavilyMap) — only TavilyCrawl is actually used in this script
+#   - Logger: Imports from local logger.py (colored console output)
+#   - No check_prerequisites() — assumes env vars are set
+#   - No configurable constants (MAX_PAGES, BATCH_SIZE, etc.)
+#
+# NOTE: This file is NOT meant to be run — it's a reference copy.
+#   To run ingestion, use: uv run ../ingestion.py
+# =============================================================================
+
 import asyncio
 import os
 import ssl
@@ -17,22 +45,34 @@ from logger import (Colors, log_error, log_header, log_info, log_success,
 
 load_dotenv()
 
-# Configure SSL context to use certifi certificates
+# Eden uses certifi for SSL — we use truststore.inject_into_ssl() instead
+# because we're behind a corporate proxy that needs Windows cert store
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 
+# OpenAI embeddings — text-embedding-3-small produces 1536-dim vectors
+# chunk_size=50 means send 50 texts per API call to OpenAI's embedding endpoint
+# retry_min_seconds=10 waits at least 10s before retrying failed API calls
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
     show_progress_bar=False,
     chunk_size=50,
     retry_min_seconds=10,
 )
+# Chroma: local vector DB (stores in chroma_db/ folder on disk)
+# Unlike Pinecone (cloud), this doesn't need an API key or internet
 vectorstore = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
+# Pinecone alternative (commented out) — what we use in our adapted version
 # vectorstore = PineconeVectorStore(
 #     index_name="langchain-docs-2025", embedding=embeddings
 # )
+
+# All three Tavily tools initialized, but only tavily_crawl is used below
+# TavilyExtract: pull content from specific URLs (like a focused scraper)
+# TavilyMap: discover all URLs on a site (like a sitemap generator)
+# TavilyCrawl: full recursive crawl (what we actually use for ingestion)
 tavily_extract = TavilyExtract()
 tavily_map = TavilyMap(max_depth=5, max_breadth=20, max_pages=1000)
 tavily_crawl = TavilyCrawl()
