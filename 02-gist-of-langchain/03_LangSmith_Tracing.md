@@ -2,6 +2,8 @@
 
 *Based on Section 1: LangChain Basics (Lectures 12 - 14)*
 
+> 🚀 **Runnable script:** [src/03_langsmith_tracing.py](src/03_langsmith_tracing.py)
+
 ## 🎯 What You Will Learn
 
   * How to solve the "Black Box" problem using LangSmith.

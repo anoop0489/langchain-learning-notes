@@ -2,6 +2,10 @@
 
 *Based on Section 3: The GIST Of AI Agents (Lectures 15 - 23)*
 
+> 🚀 **Runnable scripts:**
+> - [src/04_agent_and_tools.py](src/04_agent_and_tools.py) — ReAct Agent with Tavily
+> - [src/05_structured_output.py](src/05_structured_output.py) — Pydantic Structured Output
+
 ## 🎯 What You Will Learn
 * The shift from deterministic chains to autonomous ReAct agents.
 * Component deep dives: Tavily, Pydantic, AgentExecutor, and the `agent_scratchpad`.

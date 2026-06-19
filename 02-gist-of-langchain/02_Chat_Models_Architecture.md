@@ -2,6 +2,8 @@
 
 *Based on Section 1: LangChain Basics (Lectures 9 - 11)*
 
+> 🚀 **Runnable script:** [src/02_chat_models_architecture.py](src/02_chat_models_architecture.py)
+
 ## 🎯 What You Will Learn
 * The architectural shift from Completion Models to Chat Models.
 * The "Chat Markup Language" (System, Human, AI Roles).

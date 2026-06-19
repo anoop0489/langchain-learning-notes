@@ -1,5 +1,7 @@
 # 01. LangChain Basics: PromptTemplates & LCEL
 
+> 🚀 **Runnable script:** [src/01_langchain_fundamentals.py](src/01_langchain_fundamentals.py)
+
 ## What is LangChain?
 
 LangChain is an open-source Python/JS framework that provides a **standard interface** for interacting with LLMs from any provider (OpenAI, Anthropic, Google, Ollama, etc.) and composing them into chains, agents, and retrieval pipelines -- without rewriting code when you switch providers.
