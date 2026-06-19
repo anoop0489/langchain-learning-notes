@@ -430,6 +430,8 @@ What you get for free by using LangChain instead of calling Pinecone directly:
 
 ## Deep Dive: Chunking
 
+![Chunking Strategies Overview](assets/chunking_strategies.png)
+
 ### Why Chunk?
 
 Even with 1M token context windows, chunking is critical because of **garbage in, garbage out**: sending irrelevant context degrades LLM answers, wastes tokens, and adds cost.
