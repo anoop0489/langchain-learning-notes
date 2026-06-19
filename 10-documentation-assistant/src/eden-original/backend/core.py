@@ -52,35 +52,60 @@ vectorstore = PineconeVectorStore(
 model = init_chat_model("gpt-5.2", model_provider="openai")
 
 
+# ========================= RETRIEVAL TOOL =========================
+# @tool converts this function into a LangChain Tool object that the agent
+# can call. The decorator reads the docstring to generate the tool description
+# that the LLM sees when deciding which tools to use.
+#
+# response_format="content_and_artifact" means this function returns a TUPLE:
+#   (content_for_llm, artifact_for_app)
+# - content → becomes ToolMessage.content (the LLM reads this to generate answer)
+# - artifact → becomes ToolMessage.artifact (the app uses this for source citations)
+#
+# WHY TWO RETURN VALUES?
+# The LLM needs formatted text to reason over. The app needs raw Document objects
+# for metadata (URLs, page numbers). Splitting them avoids polluting either.
 @tool(response_format="content_and_artifact")
 def retrieve_context(query: str):
     """Retrieve relevant documentation to help answer user queries about LangChain."""
-    # Retrieve top 4 most similar documents
+    # .as_retriever() converts the vector store into a Retriever interface
+    # .invoke(query, k=4) embeds the query and finds top-4 most similar chunks
+    # C# equivalent: vectorStore.AsRetriever().Invoke(query, topK: 4)
     retrieved_docs = vectorstore.as_retriever().invoke(query, k=4)
 
-    # Serialize documents for the model
+    # Format documents as readable text for the LLM
+    # Generator expression inside join() — like string.Join("\n\n", docs.Select(...))
     serialized = "\n\n".join(
         (f"Source: {doc.metadata.get('source', 'Unknown')}\n\nContent: {doc.page_content}")
         for doc in retrieved_docs
     )
 
-    # Return both serialized content and raw documents
+    # Return TUPLE: (text for LLM to read, raw docs for app to show sources)
+    # The framework splits this into ToolMessage.content and ToolMessage.artifact
     return serialized, retrieved_docs
 
 
 def run_llm(query: str) -> Dict[str, Any]:
-    """
-    Run the RAG pipeline to answer a query using retrieved documentation.
+    """Run the agentic RAG pipeline to answer a query.
+
+    FLOW:
+      1. create_agent() builds an agent with our retrieval tool
+      2. Agent receives user query as a message
+      3. Agent decides: "Should I call retrieve_context?" (function calling)
+      4. If yes → calls tool → reads results → generates answer with citations
+      5. If no → answers from parametric knowledge (rare for doc questions)
+      6. We extract both the answer text and source Documents from the response
 
     Args:
-        query: The user's question
+        query: The user's question about LangChain
 
     Returns:
-        Dictionary containing:
-            - answer: The generated answer
-            - context: List of retrieved documents
+        dict with:
+        - "answer": str — the generated response
+        - "context": list[Document] — retrieved docs for source citations
     """
-    # Create the agent with retrieval tool
+    # System prompt: tells the agent its role and when to use the retrieval tool
+    # This is injected as the first message in every conversation
     system_prompt = (
         "You are a helpful AI assistant that answers questions about LangChain documentation. "
         "You have access to a tool that retrieves relevant documentation. "
@@ -89,24 +114,33 @@ def run_llm(query: str) -> Dict[str, Any]:
         "If you cannot find the answer in the retrieved documentation, say so."
     )
 
+    # create_agent() is LangChain's modern factory for tool-calling agents
+    # It builds a graph: User Message → LLM → (Tool Call?) → Tool → LLM → Final Answer
+    # C# equivalent: new AgentBuilder(model).AddTools(tools).SetSystemPrompt(prompt).Build()
     agent = create_agent(model, tools=[retrieve_context], system_prompt=system_prompt)
 
-    # Build messages list
+    # Messages use the OpenAI chat format: [{"role": "user", "content": "..."}]
     messages = [{"role": "user", "content": query}]
 
-    # Invoke the agent
+    # .invoke() runs the full agent loop until the LLM produces a final answer
+    # The response contains ALL messages exchanged (user, AI, tool calls, tool results)
     response = agent.invoke({"messages": messages})
 
-    # Extract the answer from the last AI message
+    # The last message in the chain is always the final AI answer
+    # response["messages"][-1] = Python for "last element" (like .Last() in LINQ)
     answer = response["messages"][-1].content
 
-    # Extract context documents from ToolMessage artifacts
+    # Extract source documents from ToolMessage artifacts
+    # The agent loop produces multiple message types:
+    #   HumanMessage → AIMessage (with tool_calls) → ToolMessage → AIMessage (final)
+    # We scan for ToolMessages that have .artifact (our raw Document list)
     context_docs = []
     for message in response["messages"]:
-        # Check if this is a ToolMessage with artifact
+        # isinstance() = C#'s "is" keyword — checks if message is a ToolMessage
         if isinstance(message, ToolMessage) and hasattr(message, "artifact"):
-            # The artifact should contain the list of Document objects
+            # artifact is the second value from our retrieve_context() return tuple
             if isinstance(message.artifact, list):
+                # .extend() = .AddRange() in C# — adds all items from artifact list
                 context_docs.extend(message.artifact)
 
     return {
@@ -114,6 +148,9 @@ def run_llm(query: str) -> Dict[str, Any]:
         "context": context_docs
     }
 
+
 if __name__ == '__main__':
+    # Quick test — run this file directly to verify the backend works
+    # C# equivalent: static void Main() { var result = RunLlm("..."); Console.Write(result); }
     result = run_llm(query="what are deep agents?")
     print(result)

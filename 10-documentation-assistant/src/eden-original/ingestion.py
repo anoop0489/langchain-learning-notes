@@ -79,14 +79,26 @@ tavily_crawl = TavilyCrawl()
 
 
 async def index_documents_async(documents: List[Document], batch_size: int = 50):
-    """Process documents in batches asynchronously."""
+    """Process documents in batches asynchronously.
+
+    WHY ASYNC?
+    Embedding + storing is I/O-bound (waiting for API responses). Async lets us
+    send batch 2 while still waiting for batch 1's response — like Task.WhenAll().
+
+    WHY BATCHES?
+    - Prevents memory issues (1000 docs at once = OOM risk)
+    - If one batch fails, you don't lose ALL progress
+    - Rate limiting: APIs throttle if you send too much at once
+    """
     log_header("VECTOR STORAGE PHASE")
     log_info(
         f"📚 VectorStore Indexing: Preparing to add {len(documents)} documents to vector store",
         Colors.DARKCYAN,
     )
 
-    # Create batches
+    # STEP 1: Split documents into fixed-size batches
+    # List comprehension + slicing (see Glossary #11 and #12)
+    # documents[0:50], documents[50:100], documents[100:120] etc.
     batches = [
         documents[i : i + batch_size] for i in range(0, len(documents), batch_size)
     ]
@@ -95,23 +107,38 @@ async def index_documents_async(documents: List[Document], batch_size: int = 50)
         f"📦 VectorStore Indexing: Split into {len(batches)} batches of {batch_size} documents each"
     )
 
-    # Process all batches concurrently
+    # STEP 2: Define the async work for a single batch
+    # This is a nested async function (closure) — it captures 'vectorstore' from outer scope
+    # C# equivalent: a local async Task method or Func<Task>
     async def add_batch(batch: List[Document], batch_num: int):
         try:
+            # .aadd_documents() is the ASYNC version of .add_documents()
+            # The "a" prefix is LangChain's convention for async methods
+            # C# equivalent: await vectorStore.AddDocumentsAsync(batch)
             await vectorstore.aadd_documents(batch)
             log_success(
                 f"VectorStore Indexing: Successfully added batch {batch_num}/{len(batches)} ({len(batch)} documents)"
             )
         except Exception as e:
+            # If one batch fails, we return False (not raise) so other batches continue
             log_error(f"VectorStore Indexing: Failed to add batch {batch_num} - {e}")
             return False
         return True
 
-    # Process batches concurrently
+    # STEP 3: Create a list of coroutines (one per batch)
+    # enumerate(batches) gives (index, batch) pairs — like .Select((item, i) =>)
+    # Each task is a coroutine object — it hasn't started running yet!
     tasks = [add_batch(batch, i + 1) for i, batch in enumerate(batches)]
+
+    # STEP 4: Run ALL batches concurrently
+    # asyncio.gather(*tasks) = Task.WhenAll(tasks) in C#
+    # The * unpacks the list into individual arguments (see Glossary #16)
+    # return_exceptions=True: if batch 3 fails, batches 1,2,4,5 still complete
+    #   Without it: one failure cancels everything (like Task.WhenAll throwing)
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Count successful batches
+    # STEP 5: Count successes — generator expression (lazy comprehension)
+    # sum(1 for x in results if condition) = results.Count(x => condition) in LINQ
     successful = sum(1 for result in results if result is True)
 
     if successful == len(batches):
@@ -125,15 +152,26 @@ async def index_documents_async(documents: List[Document], batch_size: int = 50)
 
 
 async def main():
-    """Main async function to orchestrate the entire process."""
+    """Main async function to orchestrate the entire ingestion pipeline.
+
+    PIPELINE FLOW:
+      1. TavilyCrawl → crawl documentation site, get raw page content
+      2. Convert raw results → LangChain Document objects
+      3. RecursiveCharacterTextSplitter → chunk documents into smaller pieces
+      4. index_documents_async → embed + store chunks in vector DB concurrently
+    """
     log_header("DOCUMENTATION INGESTION PIPELINE")
 
+    # ─────────────────────────────────────────────────────────────────────
+    # PHASE 1: CRAWL — Use TavilyCrawl to scrape the documentation site
+    # ─────────────────────────────────────────────────────────────────────
     log_info(
         "🗺️  TavilyCrawl: Starting to crawl the documentation site",
         Colors.PURPLE,
     )
-    # Crawl the documentation site
-
+    # .invoke() calls the Tavily API synchronously (despite being in an async func)
+    # max_depth=2: follow links up to 2 levels deep from the start URL
+    # extract_depth="advanced": use AI to extract clean content (not just HTML strip)
     res = tavily_crawl.invoke(
         {
             "url": "https://python.langchain.com/",
@@ -142,7 +180,12 @@ async def main():
         }
     )
 
-    # Convert Tavily crawl results to LangChain Document objects
+    # ─────────────────────────────────────────────────────────────────────
+    # PHASE 2: CONVERT — Transform Tavily results into LangChain Documents
+    # ─────────────────────────────────────────────────────────────────────
+    # res["results"] is a list of dicts: [{"url": ..., "raw_content": ...}, ...]
+    # We wrap each into a Document object so LangChain tools can process them
+    # Document = {page_content: str, metadata: dict} — LangChain's universal data unit
     all_docs = []
     for tavily_crawl_result_item in res["results"]:
         log_info(
@@ -150,24 +193,39 @@ async def main():
         )
         all_docs.append(
             Document(
+                # page_content: the actual text content of the page
                 page_content=tavily_crawl_result_item["raw_content"],
+                # metadata: preserved through the pipeline for source citations in the UI
                 metadata={"source": tavily_crawl_result_item["url"]},
             )
         )
 
-    # Split documents into chunks
+    # ─────────────────────────────────────────────────────────────────────
+    # PHASE 3: CHUNK — Split large documents into smaller overlapping pieces
+    # ─────────────────────────────────────────────────────────────────────
     log_header("DOCUMENT CHUNKING PHASE")
     log_info(
         f"✂️  Text Splitter: Processing {len(all_docs)} documents with 4000 chunk size and 200 overlap",
         Colors.YELLOW,
     )
+    # RecursiveCharacterTextSplitter tries separators in order:
+    #   "\n\n" (paragraphs) → "\n" (lines) → " " (words) → "" (chars)
+    # chunk_size=4000: each chunk is at most 4000 characters
+    # chunk_overlap=200: adjacent chunks share 200 chars at boundaries
+    #   (prevents losing context that spans a split point)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
+    # .split_documents() returns new Document objects with smaller page_content
+    # but preserves the original metadata (source URL) on each chunk
     splitted_docs = text_splitter.split_documents(all_docs)
     log_success(
         f"Text Splitter: Created {len(splitted_docs)} chunks from {len(all_docs)} documents"
     )
 
-    # Process documents asynchronously
+    # ─────────────────────────────────────────────────────────────────────
+    # PHASE 4: EMBED + STORE — Send chunks to vector store asynchronously
+    # ─────────────────────────────────────────────────────────────────────
+    # batch_size=500: large batches because Chroma is local (no API rate limits)
+    # For Pinecone (cloud), you'd use smaller batches (50) due to rate limiting
     await index_documents_async(splitted_docs, batch_size=500)
 
     log_header("PIPELINE COMPLETE")
@@ -178,4 +236,6 @@ async def main():
 
 
 if __name__ == "__main__":
+    # asyncio.run() creates an event loop, runs main() until complete, then shuts down
+    # This is the Python equivalent of: static async Task Main(string[] args)
     asyncio.run(main())
