@@ -9,8 +9,6 @@ A personal study/interview-prep repository for mastering LangChain, LangGraph, a
 ## Repository Structure
 
 Each course section gets its own folder with numbered `.md` files and a `src/` subfolder for runnable Python scripts:
-
-```
 XX-section-name/
 ├── NN_Theory_And_Concepts.md      # Theory, definitions, interview Q&A
 ├── MM_Implementation.md           # Implementation walkthrough, code links
@@ -19,13 +17,15 @@ XX-section-name/
 	├── main.py                    # Core example from the course
 	├── ingestion.py               # If applicable (RAG sections)
 	└── test_*.py                  # Extended examples (multimodal, conversational, etc.)
-```
-
 - Root `README.md` is the course roadmap with links to every section.
 - `reference-guides/` holds cross-cutting references (e.g., Python-to-C# glossary).
 - `01-introduction/00_Environment_Setup.md` is the setup guide (uv, .env, Pinecone, Visual Studio).
 
 ---
+
+## Documentation Conventions
+
+### Theory/Concepts Docs (`*_Theory_And_Concepts.md`)
 
 ## Documentation Conventions
 
