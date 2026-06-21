@@ -20,8 +20,8 @@ A comprehensive guide to building a production-grade documentation assistant: we
 | 8 | [init_chat_model()](#deep-dive-init_chat_model) | Provider-agnostic model initialization |
 | 9 | [Streamlit Chat UI](#deep-dive-streamlit-chat-ui) | Building interactive chat interfaces, session state, streaming |
 | 10 | [Memory via Session State](#deep-dive-memory-via-session-state) | How Streamlit's session state provides conversational memory |
-| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | Agent message flow, multiple tool calls, memory limitations, production solutions, architecture decision guide |
-| 12 | [Interview Q&A](#interview-qa-anchors) | 16 interview questions with production-grade answers |
+| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | Plain-English "which is which", pipeline vs agent flow diagrams, multiple tool calls, memory limitations, token explosion, summarization, architecture decision guide |
+| 12 | [Interview Q&A](#interview-qa-anchors) | 22 interview questions with production-grade answers |
 
 ---
 
@@ -936,6 +936,43 @@ For a demo/learning project, session state is perfect. For production, you'd bac
 ---
 
 ## Deterministic vs Agentic RAG Revisited
+
+### What Is What — Plain English
+
+**Deterministic RAG** = the retriever runs on **every** query, no exceptions. The code is a fixed pipeline: `question → retrieve → stuff into prompt → LLM → answer`. There is no decision-making — the chain always follows the same path. This is what we built in Section 9.
+
+```
+User question
+    ↓
+ALWAYS retrieve from vector store (no LLM decides this — the code just does it)
+    ↓
+Stuff retrieved chunks into the prompt
+    ↓
+LLM generates answer using those chunks
+    ↓
+Answer
+```
+
+**Agentic RAG** = an LLM **decides** whether to call the retriever. The code gives the LLM a tool (the retriever) and a choice: "use it if you need it". The LLM might call it zero times, once, or multiple times — you can't predict. This is what we built in Section 10.
+
+```
+User question
+    ↓
+LLM looks at the question and THINKS:
+    "Do I need to search the docs for this?"
+    ↓
+    ├── YES → calls retrieve_context tool → gets chunks → reads them → answers
+    ├── YES × 2 → calls tool TWICE (e.g., compare two topics) → reads both → answers
+    └── NO → answers directly from its own knowledge (no retrieval at all)
+```
+
+**The one-liner to remember:**
+> **Deterministic** = retriever always runs (hardcoded in the pipeline).
+> **Agentic** = LLM decides whether to run the retriever (it's a tool, not a fixed step).
+
+**C# Analogy:**
+- **Deterministic** = calling `repository.Search(query)` directly in your controller — it always executes, no conditions.
+- **Agentic** = giving a `Func<string, List<Document>>` to a decision engine that might or might not call it based on the input.
 
 ### The Full Picture (After Both Sections)
 
