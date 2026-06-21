@@ -17,4 +17,6 @@ __pycache__/
 Notes.txt
 /09-gist-of-rag/src/event tracking.pdf
 
+# --- Vector store data (local Chroma, generated at runtime) ---
 chroma_db/
+*.sqlite3

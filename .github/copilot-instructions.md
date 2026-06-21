@@ -34,6 +34,7 @@ XX-section-name/
 5. **Interview Q&A Anchors** — at the bottom, `## Interview Q&A Anchors` with `**Q:**` / `> **A:**` format. Each answer is 2-4 sentences, production-grade.
 6. **References** — at the very end, bullet list of relevant links.
 7. **Keep as one file** — don't split into subpages. Use the TOC for navigation. Ctrl+F across one file is faster for revision.
+8. **Flow-oriented documentation** — topics must build on each other logically, avoiding jumps between unrelated concepts. Cross-cutting concepts should go into `reference-guides/` instead of bloating section-specific theory docs.
 
 ### Implementation Docs (`*_Implementation.md`)
 
@@ -144,4 +145,4 @@ XX-section-name/
 | 4-7. Agents Under the Hood | `04-07-agents-under-the-hood/` | ✅ Complete |
 | 8. Function Calling | `08-function-calling/` | ✅ Complete |
 | 9. GIST of RAG | `09-gist-of-rag/` | ✅ Complete |
-| 10. Documentation Assistant | `10-documentation-assistant/` | 🔲 In Progress |
+| 10. Documentation Assistant | `10-documentation-assistant/` | ✅ Complete |
