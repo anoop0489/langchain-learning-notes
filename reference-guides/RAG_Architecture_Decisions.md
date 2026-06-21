@@ -100,6 +100,30 @@ Validate: Is the answer grounded & complete?
 
 **One-liner:** Retrieve → validate → generate → validate. Multiple LLM calls with quality gates.
 
+### Hybrid RAG Flow Diagram (from LangChain Official Docs)
+
+```mermaid
+graph LR
+    A[User Question] --> B[Query Enhancement]
+    B --> C[Retrieve Documents]
+    C --> D{Sufficient Info?}
+    D -- No --> E[Refine Query]
+    E --> C
+    D -- Yes --> F[Generate Answer]
+    F --> G{Answer Quality OK?}
+    G -- No --> H{Try Different Approach?}
+    H -- Yes --> E
+    H -- No --> I[Return Best Answer]
+    G -- Yes --> I
+    I --> J[Return to User]
+```
+
+Key observations from this diagram:
+- **Two validation gates** — one after retrieval, one after generation
+- **Two retry loops** — refine query loops back to retrieval; bad answer loops back to query refinement
+- **Graceful degradation** — if retries are exhausted, returns best effort rather than failing silently
+- **All paths lead to a response** — the user always gets an answer (no dead ends)
+
 ### Hybrid RAG — The Three Core Components
 
 According to LangChain's official documentation, Hybrid RAG introduces three intermediate steps that distinguish it from simpler architectures:
