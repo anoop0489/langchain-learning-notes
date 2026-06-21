@@ -1146,6 +1146,47 @@ User: "Compare LangChain agents with LangGraph agents"
 
 That's why the code loops through **all** messages to collect artifacts (not just `messages[2]`) — we can't predict how many tool calls the LLM will make. The agent loop keeps running until the LLM produces a response without a tool call.
 
+### Can You Reduce Multiple Tool Calls via the System Prompt?
+
+Yes — and this is a real production optimization. You can guide the LLM to be more efficient with its tool usage through the system prompt:
+
+```python
+# EDEN'S ORIGINAL (no guidance — LLM decides freely):
+system_prompt = "You are a helpful assistant that answers questions about LangChain."
+
+# OPTIMIZED (guide the LLM to minimize tool calls):
+system_prompt = """You are a helpful assistant that answers questions about LangChain.
+
+When using the retrieval tool:
+- Use a SINGLE broad query that covers the full question rather than multiple narrow queries.
+- For comparison questions like "Compare X and Y", search for "X vs Y" or "X and Y differences"
+  in ONE call instead of searching X and Y separately.
+- Only call the tool again if the first result clearly didn't contain what you need.
+- If the retrieved context already answers the question, respond immediately — do not search again.
+"""
+```
+
+**What changes:**
+
+| | Without Guidance | With Prompt Guidance |
+|--|--|--|
+| "Compare LangChain agents with LangGraph" | 2 tool calls (one per topic) | 1 tool call ("LangChain vs LangGraph agents") |
+| "What is LCEL?" (general knowledge) | Might still call tool unnecessarily | More likely to answer directly |
+| Cost per complex query | 3-4 LLM calls | 2 LLM calls (closer to deterministic cost) |
+
+**But there's a trade-off:**
+
+| Fewer tool calls | More tool calls |
+|---|---|
+| ✅ Cheaper, faster | ✅ More thorough coverage |
+| ❌ Might miss relevant docs from a second search | ✅ Each search is more focused |
+| ❌ Broad query = less precise retrieval | ✅ Narrow queries = more precise chunks |
+| Best for: cost-sensitive production | Best for: accuracy-critical research |
+
+**The bottom line:** You can't *guarantee* the LLM will obey — it's a suggestion, not a constraint. The system prompt reduces unnecessary calls but the LLM might still make multiple calls if it genuinely thinks it needs more context. If you need **guaranteed** single retrieval, use deterministic RAG — that's the whole point of it.
+
+**C# Analogy:** This is like adding XML doc comments to an interface method saying "please batch your database calls" — callers *should* follow the guidance, but you can't enforce it at compile time. If you need enforcement, change the architecture (deterministic = one hardcoded call).
+
 ### Production Limitation #1: No Conversation Memory
 
 Eden's code starts **fresh** on every question:
