@@ -116,6 +116,14 @@ graph LR
     H -- No --> I[Return Best Answer]
     G -- Yes --> I
     I --> J[Return to User]
+
+    classDef startend fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
+    classDef decision fill:#FDF3FF,stroke:#7E65AE,stroke-width:2px,color:#504B5F
+    classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:1.5px,color:#030710
+
+    class A,J startend
+    class B,C,E,F,I process
+    class D,G,H decision
 ```
 
 Key observations from this diagram:
