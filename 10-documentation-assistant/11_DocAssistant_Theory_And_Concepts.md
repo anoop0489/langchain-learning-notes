@@ -20,8 +20,8 @@ A comprehensive guide to building a production-grade documentation assistant: we
 | 8 | [init_chat_model()](#deep-dive-init_chat_model) | Provider-agnostic model initialization |
 | 9 | [Streamlit Chat UI](#deep-dive-streamlit-chat-ui) | Building interactive chat interfaces, session state, streaming |
 | 10 | [Memory via Session State](#deep-dive-memory-via-session-state) | How Streamlit's session state provides conversational memory |
-| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | Plain-English "which is which", cost breakdown (why deterministic is cheaper), conversational RAG vs agentic cost comparison, flow diagrams, multiple tool calls, memory limitations, token explosion, summarization, architecture decision guide |
-| 12 | [Interview Q&A](#interview-qa-anchors) | 24 interview questions with production-grade answers |
+| 11 | [Deterministic vs Agentic RAG](#deterministic-vs-agentic-rag--why-agentic-here) | Why agentic for this project, agent message flow, multiple tool calls, Eden's code limitations |
+| 12 | [Interview Q&A](#interview-qa-anchors) | 16 section-specific questions + link to architecture Q&As |
 
 ---
 
@@ -935,131 +935,22 @@ For a demo/learning project, session state is perfect. For production, you'd bac
 
 ---
 
-## Deterministic vs Agentic RAG Revisited
+## Deterministic vs Agentic RAG — Why Agentic Here?
 
-### What Is What — Plain English
+> 📖 **Full architecture guide:** [RAG Architecture Decisions](../reference-guides/RAG_Architecture_Decisions.md) — covers all three architectures (deterministic, conversational, agentic), cost breakdowns, memory strategies, and when to use which.
 
-**Deterministic RAG** = the retriever runs on **every** query, no exceptions. The code is a fixed pipeline: `question → retrieve → stuff into prompt → LLM → answer`. There is no decision-making — the chain always follows the same path. This is what we built in Section 9.
+### Quick Recap
 
-```
-User question
-    ↓
-ALWAYS retrieve from vector store (no LLM decides this — the code just does it)
-    ↓
-Stuff retrieved chunks into the prompt
-    ↓
-LLM generates answer using those chunks
-    ↓
-Answer
-```
-
-**Agentic RAG** = an LLM **decides** whether to call the retriever. The code gives the LLM a tool (the retriever) and a choice: "use it if you need it". The LLM might call it zero times, once, or multiple times — you can't predict. This is what we built in Section 10.
-
-```
-User question
-    ↓
-LLM looks at the question and THINKS:
-    "Do I need to search the docs for this?"
-    ↓
-    ├── YES → calls retrieve_context tool → gets chunks → reads them → answers
-    ├── YES × 2 → calls tool TWICE (e.g., compare two topics) → reads both → answers
-    └── NO → answers directly from its own knowledge (no retrieval at all)
-```
-
-**The one-liner to remember:**
-> **Deterministic** = retriever always runs (hardcoded in the pipeline).
-> **Agentic** = LLM decides whether to run the retriever (it's a tool, not a fixed step).
-
-**C# Analogy:**
-- **Deterministic** = calling `repository.Search(query)` directly in your controller — it always executes, no conditions.
-- **Agentic** = giving a `Func<string, List<Document>>` to a decision engine that might or might not call it based on the input.
-
-### "But Deterministic Always Retrieves — How Is That Cheaper?"
-
-This is a common confusion. "Always calling the retriever" sounds like more work. But **the retriever is almost free — it's the LLM that's expensive.**
-
-Here's what each approach actually costs per query:
-
-```
-DETERMINISTIC RAG (Section 9):
-  Step 1: Embed the query         → OpenAI embedding API   ~$0.00002  (negligible)
-  Step 2: Search Pinecone         → Vector similarity      ~$0.00000  (free tier / pennies)
-  Step 3: Stuff chunks + generate → GPT-4o LLM call        ~$0.01-0.03
-                                                    Total:  1 LLM call
-
-AGENTIC RAG (Section 10):
-  Step 1: LLM decides what to do  → GPT-4o LLM call #1     ~$0.01     (reasoning call)
-  Step 2: Embed the query         → OpenAI embedding API   ~$0.00002  (negligible)
-  Step 3: Search Pinecone         → Vector similarity      ~$0.00000  (free tier / pennies)
-  Step 4: LLM reads + generates   → GPT-4o LLM call #2     ~$0.01-0.03
-                                                    Total:  2 LLM calls (minimum)
-```
-
-**The retriever (embed + search) costs fractions of a cent. The LLM call costs ~1000× more.** So deterministic RAG makes **1 LLM call** while agentic makes **at least 2** — that's where the cost difference comes from.
-
-The retriever "always running" in deterministic RAG is like always running a SQL query — it's fast and cheap. The expensive part is the LLM reasoning, and deterministic RAG skips that extra reasoning step entirely.
-
-**C# Analogy:** Think of it like calling `dbContext.Products.Where(...)` (fast, ~1ms) vs calling an external AI service to decide *whether* to query the database and *then* querying it (slow, ~2 API calls). The database query is cheap either way — the extra AI decision is what costs money.
-
-### "But Conversational RAG Also Needs 2 LLM Calls — So It's the Same?"
-
-Good catch. When you add **follow-up support** (conversational RAG, Section 9), deterministic also uses 2 LLM calls:
-
-```
-DETERMINISTIC + CONVERSATIONAL (Section 9 with follow-ups):
-  Step 1: LLM reformulates follow-up → "Tell me more" becomes "Explain LCEL chains in detail"
-  Step 2: Retrieve from vector store  → cheap
-  Step 3: LLM generates answer        → expensive
-  Total: 2 LLM calls
-
-AGENTIC RAG (Section 10):
-  Step 1: LLM decides what to do      → should I use the tool? with what query?
-  Step 2: Retrieve from vector store   → cheap
-  Step 3: LLM generates answer         → expensive
-  Total: 2 LLM calls (minimum — could be 3+ if it calls the tool multiple times)
-```
-
-So yes — **both use 2 LLM calls** in the conversational case. But the key differences are:
-
-| | Deterministic + Conversational | Agentic |
+| | Deterministic (Section 9) | Agentic (Section 10) |
 |--|--|--|
-| **Call #1 does what?** | Reformulates the question (small, focused task) | Decides whether to retrieve AND formulates the query (open-ended reasoning) |
-| **Call #1 cost** | Lower (~500 tokens in/out — just rewriting a question) | Higher (~1000+ tokens — system prompt + tool schemas + reasoning) |
-| **Predictability** | Always: reformulate → retrieve → answer | Might skip retrieval, might retrieve twice, might answer directly |
-| **Can it skip retrieval?** | ❌ No — retrieval always happens after reformulation | ✅ Yes — LLM might decide it doesn't need docs |
-| **Can it call tools multiple times?** | ❌ No — fixed pipeline, one retrieval per query | ✅ Yes — "Compare X and Y" → 2 tool calls |
-| **Extra LLM calls possible?** | Never — always exactly 2 | Yes — complex queries might trigger 3-4 LLM calls |
+| **Who controls flow?** | You (hardcoded pipeline) | LLM (decides what tools to call) |
+| **Retrieval** | Always runs | Agent decides if/when |
+| **LLM calls** | 1 | 2+ |
+| **Cost** | Lower, predictable | Higher, variable |
 
-**The real cost difference isn't 1 vs 2 calls — it's predictability.** Deterministic conversational RAG is always exactly 2 calls, and the first call (reformulation) is cheap and simple. Agentic is **at least** 2 calls but can spiral to 3-4 for complex queries, and the reasoning call is heavier because it includes tool schemas and decision logic.
+**Why agentic for THIS project?** A documentation assistant is exploratory — sometimes the user asks general questions the model knows, sometimes they need specific API details from docs. The agent decides when retrieval is necessary. A customer support bot (where you always need the knowledge base) would use deterministic.
 
-**When to use which with follow-ups:**
-- **Deterministic + reformulation** → your system has ONE knowledge base, every question should be answered from it, you want predictable cost
-- **Agentic** → you have MULTIPLE tools (search, SQL, calculator), the LLM genuinely needs to decide which ones to use
-
-**C# Analogy:** Deterministic conversational is like middleware that normalizes the request before calling the same endpoint every time. Agentic is like a router that decides which endpoint to call — more flexible but less predictable.
-
-### The Full Picture (After Both Sections)
-
-| Factor | Deterministic (Section 9) | Deterministic + Conversational | Agentic (Section 10) |
-|--------|--------------------------|-------------------------------|---------------------|
-| **When to search** | Always | Always (after reformulation) | Agent decides |
-| **LLM calls per query** | 1 | 2 (reformulate + generate) | 2+ (reasoning + generate, maybe more) |
-| **Cost** | Lowest | Moderate (predictable) | Highest (unpredictable) |
-| **Latency** | Lowest | Moderate | Highest |
-| **Follow-up support** | ❌ None | ✅ Full | ✅ Full (if you pass history) |
-| **Predictability** | 100% predictable | 100% predictable | Variable |
-| **Off-topic handling** | Rigid | Rigid | Flexible |
-| **Best for** | Single-question bots | Customer support with follow-ups | Multi-tool exploratory assistants |
-
-### Eden's Recommendation (Revisited)
-
-> For **customer-facing production systems** where the answer MUST come from your knowledge base → **Deterministic RAG**.
-
-> For **internal tools/assistants** where the user wants flexibility and the agent genuinely needs to decide between tools → **Agentic RAG**.
-
-The documentation helper is an exploratory tool — users ask varied questions, some answerable from general knowledge, some requiring doc retrieval. This makes agentic appropriate.
-
-### What Actually Happens Inside `agent.invoke()` — The Full Message Flow
+### What Actually Happens Inside `agent.invoke()`
 
 When `run_llm("What are deep agents?")` is called, `create_agent()` orchestrates this loop automatically:
 
@@ -1144,135 +1035,17 @@ User: "Compare LangChain agents with LangGraph agents"
 [5] AIMessage       "Here's the comparison..."                       ← FINAL ANSWER
 ```
 
-That's why the code loops through **all** messages to collect artifacts (not just `messages[2]`) — we can't predict how many tool calls the LLM will make. The agent loop keeps running until the LLM produces a response without a tool call.
+That's why the code loops through **all** messages to collect artifacts (not just `messages[2]`) — we can't predict how many tool calls the LLM will make.
 
-### Can You Reduce Multiple Tool Calls via the System Prompt?
+> 💡 You can reduce unnecessary tool calls via the system prompt (e.g., "use a single broad query"). See [RAG Architecture Decisions → Reducing Tool Calls](../reference-guides/RAG_Architecture_Decisions.md#reducing-tool-calls-via-system-prompt) for the full pattern and trade-offs.
 
-Yes — and this is a real production optimization. You can guide the LLM to be more efficient with its tool usage through the system prompt:
+### Limitations of Eden's Code (Section 10-Specific)
 
-```python
-# EDEN'S ORIGINAL (no guidance — LLM decides freely):
-system_prompt = "You are a helpful assistant that answers questions about LangChain."
+**1. No conversation memory:** Eden's code passes only the current question to the agent — `st.session_state` stores messages for display only, not for the LLM. Follow-ups like "Tell me more about that" won't work.
 
-# OPTIMIZED (guide the LLM to minimize tool calls):
-system_prompt = """You are a helpful assistant that answers questions about LangChain.
+**2. Duplicate source URLs:** Eden's `_format_sources()` never deduplicated — multiple chunks from the same page showed the same URL repeatedly. Fixed with `dict.fromkeys()`.
 
-When using the retrieval tool:
-- Use a SINGLE broad query that covers the full question rather than multiple narrow queries.
-- For comparison questions like "Compare X and Y", search for "X vs Y" or "X and Y differences"
-  in ONE call instead of searching X and Y separately.
-- Only call the tool again if the first result clearly didn't contain what you need.
-- If the retrieved context already answers the question, respond immediately — do not search again.
-"""
-```
-
-**What changes:**
-
-| | Without Guidance | With Prompt Guidance |
-|--|--|--|
-| "Compare LangChain agents with LangGraph" | 2 tool calls (one per topic) | 1 tool call ("LangChain vs LangGraph agents") |
-| "What is LCEL?" (general knowledge) | Might still call tool unnecessarily | More likely to answer directly |
-| Cost per complex query | 3-4 LLM calls | 2 LLM calls (closer to deterministic cost) |
-
-**But there's a trade-off:**
-
-| Fewer tool calls | More tool calls |
-|---|---|
-| ✅ Cheaper, faster | ✅ More thorough coverage |
-| ❌ Might miss relevant docs from a second search | ✅ Each search is more focused |
-| ❌ Broad query = less precise retrieval | ✅ Narrow queries = more precise chunks |
-| Best for: cost-sensitive production | Best for: accuracy-critical research |
-
-**The bottom line:** You can't *guarantee* the LLM will obey — it's a suggestion, not a constraint. The system prompt reduces unnecessary calls but the LLM might still make multiple calls if it genuinely thinks it needs more context. If you need **guaranteed** single retrieval, use deterministic RAG — that's the whole point of it.
-
-**C# Analogy:** This is like adding XML doc comments to an interface method saying "please batch your database calls" — callers *should* follow the guidance, but you can't enforce it at compile time. If you need enforcement, change the architecture (deterministic = one hardcoded call).
-
-### Production Limitation #1: No Conversation Memory
-
-Eden's code starts **fresh** on every question:
-
-```python
-# In run_llm() — brand new each time:
-messages = [{"role": "user", "content": query}]  # ← only current question
-```
-
-Streamlit's `st.session_state` stores messages for **display only** — the previous Q&A is never sent back to the agent. So if the user asks "Tell me more about that", the LLM has no idea what "that" refers to.
-
-| | Eden's Code (Stateless) | With Memory (Stateful) |
-|--|--|--|
-| Follow-up questions | ❌ "I don't know what 'that' refers to" | ✅ Understands context |
-| Each question gets | Only its own retrieval results | Full conversation + previous results |
-| Source citations | Isolated per question (clean) | Could accumulate (needs deduplication) |
-
-**Note:** Eden's `_format_sources()` also had a bug — duplicate source URLs were never deduplicated. Multiple chunks from the same page would show the same URL repeatedly. Fixed by using `dict.fromkeys()` for order-preserving deduplication.
-
-### Production Limitation #2: History Token Explosion
-
-If you add memory by passing full conversation history, the token count grows fast:
-
-```
-After 5 questions with retrieval:
-  Each tool call adds ~4 chunks × 4000 chars = ~16,000 chars per question
-  5 questions × ~4000 tokens of tool content = ~20,000 tokens of old context
-  + system prompt + current question
-  = Approaching context window limit, slow, expensive
-```
-
-This **defeats the purpose of RAG** — the whole point is to avoid stuffing everything into the context window.
-
-### Production Solutions for Memory Management
-
-| Strategy | How It Works | Trade-off |
-|----------|-------------|-----------|
-| **Sliding window** | Keep only last N message pairs, drop older ones | Loses early context |
-| **Summarize older half** | LLM summarizes messages 1-6, keep 7-11 exact | Extra LLM call per turn (~500 tokens) |
-| **Strip ToolMessages** | Keep only Human + AI answers, drop tool content | Forces fresh retrieval for follow-ups (but that's RAG's job anyway) |
-| **Token budget** | Trim history to fit within a token limit (e.g., 4000 tokens) | Predictable cost, partial context loss |
-
-The most practical production approach combines **strip ToolMessages + sliding window**:
-
-```python
-# Keep recent Q&A pairs (not the bulky retrieved chunks)
-clean_history = [
-    msg for msg in chat_history
-    if msg["role"] in ("user", "assistant")  # drop ToolMessages
-][-10:]  # keep last 10 messages
-```
-
-This way the LLM sees enough history for follow-ups, but never drowns in old retrieved chunks. If it needs context, it calls the tool again — which is exactly what RAG is designed for.
-
-**C# Analogy:** This is like keeping a conversation log in `List<ChatMessage>` but only serializing the last N entries to send to the API, not the entire `DbContext` change history.
-
-### The Summarization Pattern (Best of Both Worlds)
-
-For longer conversations, summarize the older half, keep the recent half exact:
-
-```
-Before (11 messages, over budget):
-  [msg1] [msg2] ... [msg6]  [msg7] [msg8] [msg9] [msg10] [msg11]
-  ───── older, can compress ─────  ──── recent, keep exact ─────
-
-After summarization:
-  [Summary: "User asked about agents and streaming. Key findings: ..."]
-  [msg7] [msg8] [msg9] [msg10] [msg11]
-
-Why not summarize ALL 1-10?
-  → You'd lose precision on things the user JUST said
-  → "Use Pinecone not Chroma" in msg 9 would become vague in a summary
-  → Recent messages need exact wording for accurate follow-ups
-```
-
-The extra LLM call for summarization (~500 tokens) costs far less than sending 20,000 tokens of stale retrieved chunks every request.
-
-### Architecture Decision Guide (Interview-Ready)
-
-| Question to Ask | If Yes → | If No → |
-|-----------------|----------|---------|
-| Does the user ALWAYS need the knowledge base? | Deterministic RAG | Consider Agentic |
-| Are there multiple tools (search + SQL + API)? | Agentic (LLM picks tool) | Deterministic (one tool, always called) |
-| Is cost/latency critical? | Deterministic (1 LLM call) | Agentic OK (2+ calls acceptable) |
-| Do you need conversation memory? | Add history + reformulation or summarization | Stateless per-request is fine |
-| Is the use case open-ended/exploratory? | Agentic | Deterministic |
+**3. History would explode tokens if added naively:** Each tool call adds ~4 chunks × 4000 chars. After 5 questions, you'd be sending ~20,000 tokens of stale context. The production solutions (strip ToolMessages, sliding window, summarization) are covered in the [Memory & History Management](../reference-guides/RAG_Architecture_Decisions.md#memory--history-management) reference guide.
 
 ---
 
@@ -1354,21 +1127,7 @@ The extra LLM call for summarization (~500 tokens) costs far less than sending 2
 
 > **A:** Yes. For complex questions like "Compare LangChain agents with LangGraph", the LLM might call the retrieval tool twice — once for each topic — before synthesizing a final answer. That's why the source extraction code loops through **all** messages looking for ToolMessages with artifacts, not just a hardcoded index. The agent loop continues until the LLM produces a response without a tool call.
 
-**Q: Eden's documentation assistant has no conversation memory. What are the production options to add it?**
-
-> **A:** Three main approaches: (1) **Strip ToolMessages + sliding window** — keep only the last N Human/AI message pairs, drop bulky tool content, force fresh retrieval when needed. (2) **Summarize older half** — compress messages 1-6 into a paragraph, keep 7-11 exact, so the LLM has context gist plus precise recent history. (3) **Question reformulation** (Section 9 approach) — rewrite follow-ups as standalone queries before retrieval, so the retriever always gets a self-contained search query.
-
-**Q: If you add full conversation history to an agentic RAG system, what's the main risk?**
-
- > **A:** Token explosion. Each tool call adds ~4 chunks of ~4000 chars to the history. After 5 questions, you're sending ~20,000 tokens of stale retrieved context with every request — slow, expensive, and approaching the context window limit. This defeats RAG's purpose of avoiding stuffing everything into the context. The solution is to strip ToolMessages from history and let the agent re-retrieve when needed — that's exactly what RAG is designed for.
-
-**Q: Conversational deterministic RAG also needs 2 LLM calls — so how is it still cheaper than agentic?**
-
-> **A:** Both use 2 LLM calls, but they're not equal. Deterministic's first call is a small, focused reformulation ("rewrite this follow-up as a standalone question") — cheap, ~500 tokens. Agentic's first call is open-ended reasoning with tool schemas and decision logic — heavier, ~1000+ tokens. More importantly, deterministic is always exactly 2 calls. Agentic can spiral to 3-4 if the LLM calls the tool multiple times (e.g., "compare X and Y"). The real cost difference is **predictability**, not the number of calls.
-
-**Q: What's the simplest way to explain deterministic vs agentic RAG?**
-
-> **A:** Deterministic = **you** (the developer) define the steps — retrieve then generate, every time, no choice. Agentic = **the LLM** decides the steps — you give it tools and it figures out which ones to call and when. Deterministic is like calling `repository.Search()` directly in your controller. Agentic is like handing a `Func<>` to a decision engine that may or may not invoke it.
+> 📖 **Architecture Q&As** (deterministic vs agentic cost, memory management, when to use which): See [RAG Architecture Decisions → Interview Q&A](../reference-guides/RAG_Architecture_Decisions.md#interview-qa-anchors)
 
 ---
 
