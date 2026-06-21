@@ -19,13 +19,13 @@
 #   - st.rerun(): Force a fresh top-to-bottom rerun (used by Clear Chat)
 #
 # DIFFERENCES FROM OUR ADAPTED VERSION (../main.py):
-#   - No truststore.inject_into_ssl() (Eden uses certifi in ingestion.py)
-#   - No sys.path manipulation (Eden runs from the project root)
+#   - No truststore.inject_into_ssl() in this file (backend/core.py handles it)
+#   - No sys.path manipulation (run from the eden-original directory)
 #   - No header docblock or inline comments
 #   - Imports backend.core directly (assumes cwd is project root)
 #
-# NOTE: This file is NOT meant to be run — it's a reference copy.
-#   To run the actual assistant, use: streamlit run ../main.py
+# RUN: cd 10-documentation-assistant/src/eden-original
+#      uv run streamlit run main.py
 # =============================================================================
 
 from typing import Any, Dict, List

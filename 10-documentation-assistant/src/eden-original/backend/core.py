@@ -18,38 +18,69 @@
 #     retrieved docs for source citations in the UI
 #
 # DIFFERENCES FROM OUR ADAPTED VERSION (../../backend/core.py):
-#   - Model: Uses gpt-5.2 (Eden's course recording) vs our gpt-4o
-#   - Index: "langchain-docs-2026" vs our "doc-helper-index"
-#   - No truststore/SSL handling (Eden handles SSL in ingestion.py only)
+#   - Vector store: Configurable — toggle between Chroma and Pinecone
+#     via VECTOR_STORE_TYPE env var or constant (default: chroma)
+#   - Model: Uses gpt-4o (Eden's original used gpt-5.2)
+#   - Has truststore.inject_into_ssl() for corporate proxy
 #   - No sys.path manipulation
 #   - Minimal comments
 #
-# NOTE: This file is NOT meant to be run — it's a reference copy.
+# CONFIG: Set VECTOR_STORE_TYPE in .env to switch:
+#   VECTOR_STORE_TYPE=chroma    → local chroma_db/ folder (default)
+#   VECTOR_STORE_TYPE=pinecone  → cloud Pinecone (needs PINECONE_API_KEY)
+#
+# RUN: cd 10-documentation-assistant/src/eden-original && uv run python backend/core.py
 # =============================================================================
 
+import os
+import sys
 from typing import Any, Dict
 
+import truststore
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain.messages import ToolMessage
 from langchain.tools import tool
-from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 
+# ADAPTED: Use truststore for corporate proxy SSL
+truststore.inject_into_ssl()
+
+# =================================================================
+# CONFIGURATION — Toggle vector store and model here or via .env
+# =================================================================
+# VECTOR_STORE_TYPE: "chroma" (local, no API key) or "pinecone" (cloud)
+# Set in .env as VECTOR_STORE_TYPE=pinecone to override
+VECTOR_STORE_TYPE = os.environ.get("VECTOR_STORE_TYPE", "chroma").lower()
+
+# Pinecone index name (only used when VECTOR_STORE_TYPE=pinecone)
+PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "doc-helper-index")
+# =================================================================
+
 # Same embedding model as ingestion — MUST match or vectors won't align
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-# Connect to Pinecone index populated by ingestion.py
-# Eden used "langchain-docs-2026" — we use "doc-helper-index"
-vectorstore = PineconeVectorStore(
-    index_name="langchain-docs-2026", embedding=embeddings
-)
+# Vector store initialization — pick backend based on config
+if VECTOR_STORE_TYPE == "pinecone":
+    from langchain_pinecone import PineconeVectorStore
+    vectorstore = PineconeVectorStore(
+        index_name=PINECONE_INDEX_NAME, embedding=embeddings
+    )
+else:
+    from langchain_chroma import Chroma
+    # Resolve chroma_db/ path relative to this file's location
+    # __file__ = .../eden-original/backend/core.py → up 2 = .../eden-original/
+    _EDEN_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _CHROMA_DB = os.path.join(_EDEN_DIR, "chroma_db")
+    vectorstore = Chroma(persist_directory=_CHROMA_DB, embedding_function=embeddings)
+
 # init_chat_model() is provider-agnostic — change model_provider to
 # "anthropic", "google_genai", etc. without touching other code
-model = init_chat_model("gpt-5.2", model_provider="openai")
+# Eden's original used gpt-5.2 — we use gpt-4o (available in our env)
+model = init_chat_model("gpt-4o", model_provider="openai")
 
 
 # ========================= RETRIEVAL TOOL =========================
