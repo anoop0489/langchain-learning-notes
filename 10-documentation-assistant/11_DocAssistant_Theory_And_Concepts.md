@@ -20,7 +20,7 @@ A comprehensive guide to building a production-grade documentation assistant: we
 | 8 | [init_chat_model()](#deep-dive-init_chat_model) | Provider-agnostic model initialization |
 | 9 | [Streamlit Chat UI](#deep-dive-streamlit-chat-ui) | Building interactive chat interfaces, session state, streaming |
 | 10 | [Memory via Session State](#deep-dive-memory-via-session-state) | How Streamlit's session state provides conversational memory |
-| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | When agentic makes sense (this project) vs when it doesn't |
+| 11 | [Deterministic vs Agentic RAG Revisited](#deterministic-vs-agentic-rag-revisited) | Agent message flow, multiple tool calls, memory limitations, production solutions, architecture decision guide |
 | 12 | [Interview Q&A](#interview-qa-anchors) | 16 interview questions with production-grade answers |
 
 ---
@@ -957,6 +957,180 @@ For a demo/learning project, session state is perfect. For production, you'd bac
 
 The documentation helper is an exploratory tool — users ask varied questions, some answerable from general knowledge, some requiring doc retrieval. This makes agentic appropriate.
 
+### What Actually Happens Inside `agent.invoke()` — The Full Message Flow
+
+When `run_llm("What are deep agents?")` is called, `create_agent()` orchestrates this loop automatically:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ ITERATION 1 — LLM decides to use the retrieval tool                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Sent to OpenAI API:                                                │
+│    [SystemMessage]  "You are a helpful AI assistant..."             │
+│    [HumanMessage]   "What are deep agents?"                         │
+│                                                                     │
+│  LLM responds with:                                                 │
+│    [AIMessage]      tool_calls=[{                                   │
+│                       name: "retrieve_context",                     │
+│                       args: {query: "deep agents LangChain"}        │
+│                     }]                                              │
+│    → The LLM does NOT answer yet — it requests a tool call          │
+│                                                                     │
+│  Framework executes retrieve_context() automatically:               │
+│    → Embeds query → searches vector store → gets top 4 chunks       │
+│    → Returns (serialized, retrieved_docs) tuple                     │
+│    → Creates ToolMessage:                                           │
+│        .content  = serialized text    (LLM reads this)              │
+│        .artifact = Document objects   (app extracts URLs from this) │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ITERATION 2 — AUGMENTATION: LLM reads context and answers          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Sent to OpenAI API (full conversation including tool result):      │
+│    [SystemMessage]  "You are a helpful AI assistant..."             │
+│    [HumanMessage]   "What are deep agents?"                         │
+│    [AIMessage]      tool_calls=[{name: "retrieve_context", ...}]    │
+│    [ToolMessage]    "Source: https://...\n\nContent: Deep agents     │
+│                      are batteries-included..."                     │
+│                      ↑ serialized text AUGMENTED into conversation   │
+│                                                                     │
+│  LLM responds with:                                                 │
+│    [AIMessage]      "Deep agents in LangChain provide automatic     │
+│                      context compression..."   ← FINAL ANSWER       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ AFTER agent.invoke() — Our code extracts results                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  response["messages"] contains all 4 messages:                      │
+│    [0] HumanMessage   → user's question                             │
+│    [1] AIMessage       → tool call request (not an answer)           │
+│    [2] ToolMessage     → .content  = serialized (LLM already read)  │
+│                          .artifact = [Document(...), Document(...)]  │
+│    [3] AIMessage       → final answer text                           │
+│                                                                     │
+│  Our code extracts (in run_llm(), NOT in main.py):                  │
+│    answer      = messages[-1].content         → final answer         │
+│    context_docs = loop all ToolMessage.artifact → Documents for UI  │
+│                                                                     │
+│  Returned to Streamlit as:                                          │
+│    {"answer": "Deep agents are...", "context": [Document, ...]}     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key insight:** `create_agent()` is **generic** — it's not RAG-specific. The tool you plug in defines the capability. Swap `retrieve_context` for `get_weather` and it becomes a weather agent. RAG is just one capability you attach.
+
+### Multiple Tool Calls — Why the Loop
+
+The LLM can call the tool **multiple times** in a single `agent.invoke()`:
+
+```
+User: "Compare LangChain agents with LangGraph agents"
+
+[0] HumanMessage   "Compare LangChain agents with LangGraph agents"
+[1] AIMessage       tool_calls=[{query: "LangChain agents"}]         ← 1st call
+[2] ToolMessage     .artifact = [Doc, Doc, Doc, Doc]                 ← 4 docs
+[3] AIMessage       tool_calls=[{query: "LangGraph agents"}]         ← 2nd call
+[4] ToolMessage     .artifact = [Doc, Doc, Doc, Doc]                 ← 4 more docs
+[5] AIMessage       "Here's the comparison..."                       ← FINAL ANSWER
+```
+
+That's why the code loops through **all** messages to collect artifacts (not just `messages[2]`) — we can't predict how many tool calls the LLM will make. The agent loop keeps running until the LLM produces a response without a tool call.
+
+### Production Limitation #1: No Conversation Memory
+
+Eden's code starts **fresh** on every question:
+
+```python
+# In run_llm() — brand new each time:
+messages = [{"role": "user", "content": query}]  # ← only current question
+```
+
+Streamlit's `st.session_state` stores messages for **display only** — the previous Q&A is never sent back to the agent. So if the user asks "Tell me more about that", the LLM has no idea what "that" refers to.
+
+| | Eden's Code (Stateless) | With Memory (Stateful) |
+|--|--|--|
+| Follow-up questions | ❌ "I don't know what 'that' refers to" | ✅ Understands context |
+| Each question gets | Only its own retrieval results | Full conversation + previous results |
+| Source citations | Isolated per question (clean) | Could accumulate (needs deduplication) |
+
+**Note:** Eden's `_format_sources()` also had a bug — duplicate source URLs were never deduplicated. Multiple chunks from the same page would show the same URL repeatedly. Fixed by using `dict.fromkeys()` for order-preserving deduplication.
+
+### Production Limitation #2: History Token Explosion
+
+If you add memory by passing full conversation history, the token count grows fast:
+
+```
+After 5 questions with retrieval:
+  Each tool call adds ~4 chunks × 4000 chars = ~16,000 chars per question
+  5 questions × ~4000 tokens of tool content = ~20,000 tokens of old context
+  + system prompt + current question
+  = Approaching context window limit, slow, expensive
+```
+
+This **defeats the purpose of RAG** — the whole point is to avoid stuffing everything into the context window.
+
+### Production Solutions for Memory Management
+
+| Strategy | How It Works | Trade-off |
+|----------|-------------|-----------|
+| **Sliding window** | Keep only last N message pairs, drop older ones | Loses early context |
+| **Summarize older half** | LLM summarizes messages 1-6, keep 7-11 exact | Extra LLM call per turn (~500 tokens) |
+| **Strip ToolMessages** | Keep only Human + AI answers, drop tool content | Forces fresh retrieval for follow-ups (but that's RAG's job anyway) |
+| **Token budget** | Trim history to fit within a token limit (e.g., 4000 tokens) | Predictable cost, partial context loss |
+
+The most practical production approach combines **strip ToolMessages + sliding window**:
+
+```python
+# Keep recent Q&A pairs (not the bulky retrieved chunks)
+clean_history = [
+    msg for msg in chat_history
+    if msg["role"] in ("user", "assistant")  # drop ToolMessages
+][-10:]  # keep last 10 messages
+```
+
+This way the LLM sees enough history for follow-ups, but never drowns in old retrieved chunks. If it needs context, it calls the tool again — which is exactly what RAG is designed for.
+
+**C# Analogy:** This is like keeping a conversation log in `List<ChatMessage>` but only serializing the last N entries to send to the API, not the entire `DbContext` change history.
+
+### The Summarization Pattern (Best of Both Worlds)
+
+For longer conversations, summarize the older half, keep the recent half exact:
+
+```
+Before (11 messages, over budget):
+  [msg1] [msg2] ... [msg6]  [msg7] [msg8] [msg9] [msg10] [msg11]
+  ───── older, can compress ─────  ──── recent, keep exact ─────
+
+After summarization:
+  [Summary: "User asked about agents and streaming. Key findings: ..."]
+  [msg7] [msg8] [msg9] [msg10] [msg11]
+
+Why not summarize ALL 1-10?
+  → You'd lose precision on things the user JUST said
+  → "Use Pinecone not Chroma" in msg 9 would become vague in a summary
+  → Recent messages need exact wording for accurate follow-ups
+```
+
+The extra LLM call for summarization (~500 tokens) costs far less than sending 20,000 tokens of stale retrieved chunks every request.
+
+### Architecture Decision Guide (Interview-Ready)
+
+| Question to Ask | If Yes → | If No → |
+|-----------------|----------|---------|
+| Does the user ALWAYS need the knowledge base? | Deterministic RAG | Consider Agentic |
+| Are there multiple tools (search + SQL + API)? | Agentic (LLM picks tool) | Deterministic (one tool, always called) |
+| Is cost/latency critical? | Deterministic (1 LLM call) | Agentic OK (2+ calls acceptable) |
+| Do you need conversation memory? | Add history + reformulation or summarization | Stateless per-request is fine |
+| Is the use case open-ended/exploratory? | Agentic | Deterministic |
+
 ---
 
 ## Interview Q&A Anchors
@@ -1024,6 +1198,26 @@ The documentation helper is an exploratory tool — users ask varied questions, 
 **Q: When creating a Pinecone index, should you select an embedding model in the UI?**
 
 > **A:** Only if you want Pinecone to do the embedding for you (Integrated approach — you send raw text, Pinecone embeds + stores). If you're using LangChain's `PineconeVectorStore` with `OpenAIEmbeddings`, select "Bring your own vectors" and set dimensions=1536 manually. Your code calls OpenAI to get vectors, then sends those pre-computed floats to Pinecone for storage. This gives you full control over the embedding model and is cheaper.
+
+**Q: Where does the "augmentation" in RAG actually happen inside `create_agent()`?**
+
+> **A:** The framework does it automatically between agent loop iterations. After the tool executes and returns serialized text, the framework adds it as a `ToolMessage` to the conversation and sends the full message chain (including the tool result) back to the LLM. The LLM now has the retrieved context in its conversation history and uses it to generate the final answer. You never write this loop — `create_agent()` handles it internally.
+
+**Q: `create_agent()` is RAG-specific, right?**
+
+> **A:** No. `create_agent()` is a generic agent loop — it has no knowledge of retrieval. It becomes Agentic RAG only because you plug in a retrieval tool. Give it `get_weather` and it's a weather agent. Give it `run_sql_query` and it's a SQL agent. The tool defines the capability; the agent framework is the same in all cases.
+
+**Q: Can the LLM make multiple tool calls in a single `agent.invoke()`?**
+
+> **A:** Yes. For complex questions like "Compare LangChain agents with LangGraph", the LLM might call the retrieval tool twice — once for each topic — before synthesizing a final answer. That's why the source extraction code loops through **all** messages looking for ToolMessages with artifacts, not just a hardcoded index. The agent loop continues until the LLM produces a response without a tool call.
+
+**Q: Eden's documentation assistant has no conversation memory. What are the production options to add it?**
+
+> **A:** Three main approaches: (1) **Strip ToolMessages + sliding window** — keep only the last N Human/AI message pairs, drop bulky tool content, force fresh retrieval when needed. (2) **Summarize older half** — compress messages 1-6 into a paragraph, keep 7-11 exact, so the LLM has context gist plus precise recent history. (3) **Question reformulation** (Section 9 approach) — rewrite follow-ups as standalone queries before retrieval, so the retriever always gets a self-contained search query.
+
+**Q: If you add full conversation history to an agentic RAG system, what's the main risk?**
+
+> **A:** Token explosion. Each tool call adds ~4 chunks of ~4000 chars to the history. After 5 questions, you're sending ~20,000 tokens of stale retrieved context with every request — slow, expensive, and approaching the context window limit. This defeats RAG's purpose of avoiding stuffing everything into the context. The solution is to strip ToolMessages from history and let the agent re-retrieve when needed — that's exactly what RAG is designed for.
 
 ---
 

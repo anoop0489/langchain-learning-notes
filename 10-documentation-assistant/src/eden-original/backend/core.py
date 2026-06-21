@@ -180,6 +180,92 @@ def run_llm(query: str) -> Dict[str, Any]:
     }
 
 
+# =============================================================================
+# AGENTIC RAG WORKFLOW — What happens inside agent.invoke()
+# =============================================================================
+#
+# When run_llm("What are deep agents?") is called, this is the full message
+# flow that create_agent() orchestrates automatically:
+#
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ ITERATION 1 — LLM decides to use the retrieval tool                │
+# ├─────────────────────────────────────────────────────────────────────┤
+# │                                                                     │
+# │  Sent to OpenAI API:                                                │
+# │    [SystemMessage]  "You are a helpful AI assistant that answers..." │
+# │    [HumanMessage]   "What are deep agents?"                         │
+# │                                                                     │
+# │  LLM responds with:                                                 │
+# │    [AIMessage]      tool_calls=[{                                   │
+# │                       name: "retrieve_context",                     │
+# │                       args: {query: "deep agents LangChain"}        │
+# │                     }]                                              │
+# │    → The LLM does NOT answer yet — it requests a tool call          │
+# │                                                                     │
+# │  Framework sees tool_call → executes retrieve_context():            │
+# │    → Embeds query → searches vector store → gets 4 chunks           │
+# │    → Returns (serialized, retrieved_docs) tuple                     │
+# │    → Creates ToolMessage:                                           │
+# │        .content  = serialized text    (for LLM to read)             │
+# │        .artifact = Document objects   (for app to extract URLs)     │
+# │                                                                     │
+# └─────────────────────────────────────────────────────────────────────┘
+#
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ ITERATION 2 — AUGMENTATION: LLM reads context and answers          │
+# ├─────────────────────────────────────────────────────────────────────┤
+# │                                                                     │
+# │  Sent to OpenAI API (full conversation including tool result):      │
+# │    [SystemMessage]  "You are a helpful AI assistant that answers..." │
+# │    [HumanMessage]   "What are deep agents?"                         │
+# │    [AIMessage]      tool_calls=[{name: "retrieve_context", ...}]    │
+# │    [ToolMessage]    "Source: https://...\n\nContent: Deep agents     │
+# │                      are batteries-included..."  ← AUGMENTED HERE   │
+# │                                                                     │
+# │  The serialized text from retrieve_context() is now part of the     │
+# │  conversation. The LLM reads it as context to generate the answer.  │
+# │                                                                     │
+# │  LLM responds with:                                                 │
+# │    [AIMessage]      "Deep agents in LangChain are a batteries-      │
+# │                      included solution that provides automatic      │
+# │                      context compression..."  ← FINAL ANSWER        │
+# │                                                                     │
+# └─────────────────────────────────────────────────────────────────────┘
+#
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ AFTER agent.invoke() — Our code extracts results                    │
+# ├─────────────────────────────────────────────────────────────────────┤
+# │                                                                     │
+# │  response["messages"] now contains all 4 messages:                  │
+# │    [0] HumanMessage   → user's question                             │
+# │    [1] AIMessage       → tool call request (not an answer)           │
+# │    [2] ToolMessage     → .content  = serialized (LLM already read)  │
+# │                          .artifact = [Document(...), Document(...)]  │
+# │    [3] AIMessage       → .content  = final answer text               │
+# │                                                                     │
+# │  We extract (in run_llm(), NOT in main.py):                        │
+# │    answer      = messages[-1].content        → final answer (msg 3) │
+# │    context_docs = loop through all messages, find ToolMessages      │
+# │                   with .artifact → collect raw Documents for UI     │
+# │    (we loop instead of hardcoding [2] because the agent could       │
+# │     call the tool multiple times, producing multiple ToolMessages)  │
+# │                                                                     │
+# │  Returned to Streamlit as:                                          │
+# │    {"answer": "Deep agents are...", "context": [Document, ...]}     │
+# │    → answer shown in chat bubble                                    │
+# │    → context used to render source links in expandable section      │
+# │                                                                     │
+# └─────────────────────────────────────────────────────────────────────┘
+#
+# KEY INSIGHT — create_agent() is generic, NOT RAG-specific:
+#   create_agent(model, tools=[retrieve_context])  → Agentic RAG
+#   create_agent(model, tools=[get_weather])        → Weather agent
+#   create_agent(model, tools=[run_sql])            → SQL agent
+#   The tool you plug in defines the capability. The agent loop is the same.
+#
+# =============================================================================
+
+
 if __name__ == '__main__':
     # Quick test — run this file directly to verify the backend works
     # C# equivalent: static void Main() { var result = RunLlm("..."); Console.Write(result); }

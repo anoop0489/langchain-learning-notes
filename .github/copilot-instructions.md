@@ -27,10 +27,6 @@ XX-section-name/
 
 ### Theory/Concepts Docs (`*_Theory_And_Concepts.md`)
 
-## Documentation Conventions
-
-### Theory/Concepts Docs (`*_Theory_And_Concepts.md`)
-
 1. **Table of Contents** at the top — numbered table with anchor links and "What You'll Learn" column.
 2. **Key Definitions table** — `| Term | Quick Recall | Full Definition |` format. The "Quick Recall" column is the one-liner to say first in an interview.
 3. **Deep Dive sections** — each major topic gets `## Deep Dive: <Topic>`. Use tables, code blocks, and analogies.
@@ -98,6 +94,7 @@ XX-section-name/
 5. **Don't commit `.env` or company PDFs** — these are in `.gitignore`.
 6. **Update `README.md`** when adding new sections — add the section header and file links.
 7. **Update implementation doc** project structure tree when adding new scripts.
+8. **Identify and call out bugs and improvements** explicitly when reviewing code, rather than silently fixing them.
 
 ---
 

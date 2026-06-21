@@ -41,12 +41,14 @@ def _format_sources(context_docs: List[Any]) -> List[str]:
 
     Uses a walrus operator (:=) to extract metadata in a list comprehension.
     Each Document has .metadata dict with a "source" key containing the URL.
+    Deduplicates URLs using dict.fromkeys() which preserves insertion order.
     """
-    return [
+    all_sources = [
         str((meta.get("source") or "Unknown"))
         for doc in (context_docs or [])
         if (meta := (getattr(doc, "metadata", None) or {})) is not None
     ]
+    return list(dict.fromkeys(all_sources))
 
 
 # Page config — MUST be the first st.* call in the script
