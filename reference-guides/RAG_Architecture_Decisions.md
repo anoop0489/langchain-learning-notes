@@ -1,6 +1,6 @@
 # RAG Architecture Decisions — A Production Guide
 
-When to use Deterministic RAG, Agentic RAG, or Conversational RAG. Cost analysis, memory strategies, and system prompt optimization.
+When to use Deterministic (2-Step) RAG, Agentic RAG, Conversational RAG, or Hybrid RAG. Official LangChain terminology mapping, cost analysis, memory strategies, and system prompt optimization.
 
 *Cross-cutting reference — applies to any RAG system you build, not just one section.*
 
@@ -10,13 +10,13 @@ When to use Deterministic RAG, Agentic RAG, or Conversational RAG. Cost analysis
 
 | # | Section | What You'll Learn |
 |---|---------|-------------------|
-| 1 | [The Three RAG Architectures](#the-three-rag-architectures) | Definitions, flow diagrams, one-liners |
+| 1 | [The Four RAG Architectures](#the-three-rag-architectures) | Definitions, flow diagrams, official LangChain terminology mapping |
 | 2 | [Cost Breakdown](#cost-breakdown--why-deterministic-is-cheaper) | Why "always retrieving" is actually cheaper |
-| 3 | [Comparison Table](#the-full-comparison) | Side-by-side: all three approaches |
+| 3 | [Comparison Table](#the-full-comparison) | Side-by-side: all four approaches |
 | 4 | [System Prompt Optimization](#reducing-tool-calls-via-system-prompt) | How to guide the agent to minimize cost |
 | 5 | [Memory & History Management](#memory--history-management) | Token explosion, sliding windows, summarization |
-| 6 | [Architecture Decision Guide](#architecture-decision-guide) | 5 questions to pick the right approach |
-| 7 | [Interview Q&A](#interview-qa-anchors) | 8 architecture-focused interview questions |
+| 6 | [Architecture Decision Guide](#architecture-decision-guide) | 7 questions to pick the right approach |
+| 7 | [Interview Q&A](#interview-qa-anchors) | 8+ architecture-focused interview questions |
 
 ---
 
@@ -75,13 +75,58 @@ LLM looks at the question and THINKS:
 
 **One-liner:** LLM decides whether to retrieve. 2+ LLM calls. Unpredictable.
 
+### 4. Hybrid RAG (Self-Correcting)
+
+Combines characteristics of both 2-Step and Agentic. Adds **validation loops** — the system checks whether retrieval was good enough and whether the answer is grounded, retrying if not.
+
+```
+User question
+	↓
+Query Enhancement (rewrite vague queries for better retrieval)
+	↓
+Retrieve from vector store
+	↓
+Validate: Are these chunks actually relevant?
+	├── NO → Refine query → Retrieve again
+	└── YES ↓
+Generate answer
+	↓
+Validate: Is the answer grounded & complete?
+	├── NO → Try different approach or return best effort
+	└── YES → Return answer
+```
+
+**One-liner:** Retrieve → validate → generate → validate. Multiple LLM calls with quality gates.
+
+**When to use:** Ambiguous queries, domain-specific Q&A where wrong answers are costly, systems that need measurable quality guarantees.
+
+---
+
+### Official LangChain Terminology Mapping
+
+LangChain's official documentation (as of 2025) uses slightly different naming. When you read their docs or talk to interviewers who use their terms:
+
+| Our Term (This Repo) | LangChain Official Term | Notes |
+|---|---|---|
+| **Deterministic RAG** | **2-Step RAG** | "Retrieval always happens before generation. Simple and predictable." |
+| **Deterministic + Conversational** | **2-Step RAG** (with reformulation) | LangChain doesn't name this separately — it's still 2-step with a pre-processing chain |
+| **Agentic RAG** | **Agentic RAG** | Same name. "An LLM-powered agent decides *when* and *how* to retrieve." |
+| **Hybrid RAG** | **Hybrid RAG** | Combines both with validation steps. LangChain references LangGraph's "Agentic RAG with Self-Correction" tutorial for this. |
+
+**Interview tip:** Use "2-Step RAG" when talking about LangChain specifically. Use "Deterministic RAG" when discussing architecture patterns generally — it's more descriptive of *why* you chose it.
+
+> 📖 **Source:** [LangChain Retrieval Docs](https://docs.langchain.com/oss/python/langchain/retrieval) — the official comparison table and architecture descriptions.
+
+---
+
 ### The C# Analogy
 
 | Architecture | C# Equivalent |
 |---|---|
-| **Deterministic** | Calling `repository.Search(query)` directly in your controller — always executes |
+| **Deterministic / 2-Step** | Calling `repository.Search(query)` directly in your controller — always executes |
 | **Deterministic + Conversational** | Middleware normalizes the request, then always calls the same endpoint |
 | **Agentic** | Handing a `Func<string, List<Document>>` to a decision engine that may or may not invoke it |
+| **Hybrid** | A `while` loop with `IValidator` checks after each step — retry until `ValidationResult.IsValid` |
 
 ---
 
@@ -126,17 +171,17 @@ AGENTIC RAG:
 
 ## The Full Comparison
 
-| Factor | Deterministic | Deterministic + Conversational | Agentic |
-|--------|--------------|-------------------------------|---------|
-| **Who controls flow?** | Developer (hardcoded) | Developer (hardcoded) | LLM (decides) |
-| **When to search** | Always | Always (after reformulation) | Agent decides |
-| **LLM calls per query** | 1 | 2 (reformulate + generate) | 2+ (reasoning + generate, maybe more) |
-| **Cost** | Lowest | Moderate (predictable) | Highest (unpredictable) |
-| **Latency** | Lowest | Moderate | Highest |
-| **Follow-up support** | ❌ None | ✅ Full | ✅ Full (if you pass history) |
-| **Predictability** | 100% | 100% | Variable |
-| **Off-topic handling** | Rigid (always answers from docs) | Rigid | Flexible (can refuse or answer generally) |
-| **Best for** | Single-question bots | Customer support with follow-ups | Multi-tool exploratory assistants |
+| Factor | Deterministic (2-Step) | Deterministic + Conversational | Agentic | Hybrid |
+|--------|--------------|-------------------------------|---------|--------|
+| **Who controls flow?** | Developer (hardcoded) | Developer (hardcoded) | LLM (decides) | Developer + LLM (validation gates) |
+| **When to search** | Always | Always (after reformulation) | Agent decides | Always, with retry if bad |
+| **LLM calls per query** | 1 | 2 (reformulate + generate) | 2+ (reasoning + generate, maybe more) | 3-5 (enhance + validate + generate + validate) |
+| **Cost** | Lowest | Moderate (predictable) | High (unpredictable) | Highest (multiple validation calls) |
+| **Latency** | Lowest | Moderate | Variable | Highest (loops) |
+| **Follow-up support** | ❌ None | ✅ Full | ✅ Full (if you pass history) | ✅ Full |
+| **Predictability** | 100% | 100% | Variable | Mostly predictable (capped loops) |
+| **Off-topic handling** | Rigid (always answers from docs) | Rigid | Flexible (can refuse or answer generally) | Flexible (validator catches off-topic) |
+| **Best for** | Single-question bots | Customer support with follow-ups | Multi-tool exploratory assistants | High-stakes domain Q&A (medical, legal, finance) |
 
 ---
 
@@ -246,11 +291,13 @@ Ask these questions when designing a RAG system:
 
 | Question | If Yes → | If No → |
 |----------|----------|---------|
-| Does the user ALWAYS need the knowledge base? | Deterministic RAG | Consider Agentic |
+| Does the user ALWAYS need the knowledge base? | Deterministic / 2-Step RAG | Consider Agentic |
 | Are there multiple tools (search + SQL + API)? | Agentic (LLM picks tool) | Deterministic (one tool, always called) |
 | Is cost/latency critical? | Deterministic (1 LLM call) | Agentic OK (2+ calls acceptable) |
 | Do you need conversation memory? | Add reformulation or summarization | Stateless per-request is fine |
 | Is the use case open-ended/exploratory? | Agentic | Deterministic |
+| Are wrong answers unacceptable (medical, legal)? | Hybrid (validation loops) | Deterministic or Agentic |
+| Do you need measurable quality guarantees? | Hybrid (built-in eval gates) | Simpler architecture is fine |
 
 ### All Architecture Decisions at a Glance
 
@@ -304,6 +351,8 @@ Ask these questions when designing a RAG system:
 
 ## References
 
+- [LangChain Retrieval Docs (Official RAG Architectures)](https://docs.langchain.com/oss/python/langchain/retrieval)
+- [chat-langchain — LangChain's Production RAG Chatbot](https://github.com/langchain-ai/chat-langchain)
 - [LangChain Agents — create_agent](https://python.langchain.com/docs/how_to/tool_calling_agent/)
 - [LangChain Conversation Memory](https://python.langchain.com/docs/how_to/chatbots_memory/)
 - [OpenAI Pricing](https://openai.com/pricing)

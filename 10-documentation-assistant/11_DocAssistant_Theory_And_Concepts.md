@@ -1144,6 +1144,35 @@ All concepts in this doc are implemented as runnable scripts. See the implementa
 
 ---
 
+## Production Reference: chat-langchain
+
+Eden walks through [**chat-langchain**](https://github.com/langchain-ai/chat-langchain) — LangChain's own production documentation chatbot (the system behind `chat.langchain.com`). This is the real-world implementation our Section 10 assistant is modeled after.
+
+### What It Demonstrates
+
+| Feature | Implementation |
+|---------|---------------|
+| **Architecture** | Agentic RAG with LangGraph (state machine, not raw agent loop) |
+| **Retrieval** | Pinecone vector store with curated documentation embeddings |
+| **Memory** | LangGraph checkpointing (persistent, not just session state) |
+| **Streaming** | Token-by-token via LangGraph's streaming events |
+| **Multi-source** | Searches across LangChain, LangGraph, LangSmith docs simultaneously |
+| **Deployment** | FastAPI backend + React frontend, containerized |
+| **Feedback** | LangSmith feedback integration (thumbs up/down → evaluation dataset) |
+
+### Why It Matters for Interviews
+
+- Shows how a real team evolved from simple RAG to LangGraph-based agentic retrieval
+- Demonstrates production concerns we studied: streaming, memory management, source citations
+- Uses the same building blocks (Pinecone, OpenAI embeddings, tool-calling agents) — just with LangGraph for orchestration instead of raw `create_agent()`
+- The repo structure (backend/frontend split, ingestion scripts, deployment configs) mirrors real production setups
+
+**Key takeaway:** Our Section 10 assistant is a simplified but architecturally accurate version of `chat-langchain`. The main upgrade path from our code → production is: replace Streamlit with a proper frontend, replace `create_agent()` with LangGraph `StateGraph`, and add persistent memory + feedback loops.
+
+> 🔗 **Repo:** [github.com/langchain-ai/chat-langchain](https://github.com/langchain-ai/chat-langchain)
+
+---
+
 ## References
 
 - [Tavily API Documentation](https://docs.tavily.com/)
