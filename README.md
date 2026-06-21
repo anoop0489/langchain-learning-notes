@@ -52,6 +52,7 @@ Building a production documentation helper — web crawling, agentic RAG, Stream
 | :--- | :--- | 
 | [Python OOP for C#/Java Devs](./reference-guides/Python_to_CSharp_Glossary.md) | Translates LangChain's Python architecture (kwargs, operator overloading, factory methods) into strict C#/Java OOP terminology. |
 | [RAG Architecture Decisions](./reference-guides/RAG_Architecture_Decisions.md) | Deterministic vs Agentic vs Conversational RAG — cost breakdowns, memory strategies, system prompt optimization, and when to use which. |
+| [Production Patterns](./reference-guides/Production_Patterns.md) | Deployment (FastAPI, containers), resilience (retries, fallbacks, circuit breakers), security (prompt injection, PII), and observability. |
 
 ## 🛠️ Tech Stack
 - **Languages/Tools:** Python (managed via `uv`), Pydantic

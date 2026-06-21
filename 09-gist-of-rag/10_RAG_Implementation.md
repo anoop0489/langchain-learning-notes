@@ -26,7 +26,8 @@ We build a complete RAG system that:
 │   ├── test_multimodal_pdf_rag.py      # PDF RAG with 4-loader comparison (vision default)
 │   ├── test_conversational_rag.py      # Multi-turn RAG with question reformulation
 │   ├── test_streaming_rag.py           # .invoke() vs .stream() side-by-side comparison
-│   └── test_indexing_strategy.py       # Incremental ingestion with RecordManager
+│   ├── test_indexing_strategy.py       # Incremental ingestion with RecordManager
+│   └── test_rag_evaluation.py          # LLM-as-judge evaluation (faithfulness, relevance)
 ├── 09_RAG_Theory_And_Concepts.md       # Theory & definitions (previous file)
 └── 10_RAG_Implementation.md            # This file (implementation walkthrough)
 ```

@@ -930,6 +930,8 @@ Before reaching for evaluation frameworks, try these manual checks:
 
 > **For this course**: LangSmith tracing gives you immediate visibility into what the retriever returns and what the LLM generates. Start there before adding automated evaluation.
 
+> 🚀 **Runnable example:** [test_rag_evaluation.py](src/test_rag_evaluation.py) — LLM-as-judge evaluation scoring faithfulness, answer relevance, and retrieval relevance across a test dataset.
+
 ---
 
 ## Interview Q&A Anchors
