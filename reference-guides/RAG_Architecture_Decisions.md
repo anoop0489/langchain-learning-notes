@@ -79,6 +79,19 @@ LLM looks at the question and THINKS:
 
 **The production standard.** This is what most companies actually deploy — it combines the predictability of 2-Step RAG with validation loops that catch bad retrievals and hallucinated answers before they reach the user.
 
+#### Official Definition (from LangChain Docs)
+
+> **Hybrid RAG** combines characteristics of both 2-Step and Agentic RAG. It introduces intermediate steps such as query preprocessing, retrieval validation, and post-generation checks. These systems offer more flexibility than fixed pipelines while maintaining some control over execution.
+>
+> Typical components include:
+> - **Query enhancement**: Modify the input question to improve retrieval quality. This can involve rewriting unclear queries, generating multiple variations, or expanding queries with additional context.
+> - **Retrieval validation**: Evaluate whether retrieved documents are relevant and sufficient. If not, the system may refine the query and retrieve again.
+> - **Answer validation**: Check the generated answer for accuracy, completeness, and alignment with source content. If needed, the system can regenerate or revise the answer.
+>
+> The architecture often supports **multiple iterations** between these steps.
+>
+> — *[LangChain Retrieval Docs](https://docs.langchain.com/oss/python/langchain/retrieval)*
+
 The key insight: in production, you can't trust that retrieval *always* finds the right chunks, and you can't trust that the LLM *always* generates grounded answers. Hybrid RAG adds **quality gates** — automated checks that retry or reroute when something goes wrong.
 
 ```
