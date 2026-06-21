@@ -77,7 +77,9 @@ LLM looks at the question and THINKS:
 
 ### 4. Hybrid RAG (Self-Correcting)
 
-Combines characteristics of both 2-Step and Agentic. Adds **validation loops** — the system checks whether retrieval was good enough and whether the answer is grounded, retrying if not.
+**The production standard.** This is what most companies actually deploy — it combines the predictability of 2-Step RAG with validation loops that catch bad retrievals and hallucinated answers before they reach the user.
+
+The key insight: in production, you can't trust that retrieval *always* finds the right chunks, and you can't trust that the LLM *always* generates grounded answers. Hybrid RAG adds **quality gates** — automated checks that retry or reroute when something goes wrong.
 
 ```
 User question
@@ -87,7 +89,7 @@ Query Enhancement (rewrite vague queries for better retrieval)
 Retrieve from vector store
 	↓
 Validate: Are these chunks actually relevant?
-	├── NO → Refine query → Retrieve again
+	├── NO → Refine query → Retrieve again (up to N retries)
 	└── YES ↓
 Generate answer
 	↓
@@ -98,7 +100,57 @@ Validate: Is the answer grounded & complete?
 
 **One-liner:** Retrieve → validate → generate → validate. Multiple LLM calls with quality gates.
 
-**When to use:** Ambiguous queries, domain-specific Q&A where wrong answers are costly, systems that need measurable quality guarantees.
+### Hybrid RAG — The Three Core Components
+
+According to LangChain's official documentation, Hybrid RAG introduces three intermediate steps that distinguish it from simpler architectures:
+
+| Component | What It Does | Why It Matters |
+|-----------|-------------|----------------|
+| **Query Enhancement** | Modifies the input question to improve retrieval quality — rewrites unclear queries, generates multiple variations, or expands with additional context | Vague questions like "how does it work?" become precise searches like "how does the LangChain LCEL pipe operator compose runnables" |
+| **Retrieval Validation** | Evaluates whether retrieved documents are relevant and sufficient. If not, refines the query and retrieves again | Catches the #1 RAG failure mode — retrieving irrelevant chunks that lead to hallucinated answers |
+| **Answer Validation** | Checks the generated answer for accuracy, completeness, and alignment with source content. Can regenerate or revise | Prevents the #2 failure mode — LLM adding unsupported claims even when chunks were correct |
+
+### Why Production Teams Choose Hybrid
+
+Eden emphasizes that Hybrid RAG is what's actually deployed across production systems in companies. Here's why:
+
+| Problem in Production | How Hybrid Fixes It |
+|----------------------|---------------------|
+| Users ask vague questions ("how does it work?") | Query enhancement rewrites before retrieval |
+| Retriever returns irrelevant chunks (wrong k, ambiguous query) | Retrieval validation detects and retries with refined query |
+| LLM hallucinates despite having correct context | Answer validation catches unsupported claims |
+| Different queries need different strategies | Conditional routing (web search vs vector store vs SQL) based on query type |
+| Single retrieval isn't enough for complex questions | Iterative refinement loop until quality threshold is met |
+
+### Hybrid RAG vs Simple Agentic RAG
+
+| | Agentic RAG | Hybrid RAG |
+|--|--|--|
+| **Decision maker** | LLM decides everything freely | Developer designs the validation logic, LLM executes within it |
+| **Quality guarantees** | None — hope the LLM does the right thing | Built-in — validators catch failures before user sees them |
+| **Retry logic** | LLM might retry, might not | Codified — max N retries, with query refinement |
+| **Cost predictability** | Low (LLM might loop forever) | Moderate (capped loops, known max iterations) |
+| **Production readiness** | Risky without guardrails | Designed for production from the start |
+
+### Implementation Pattern (LangGraph)
+
+Hybrid RAG is where **LangGraph** (state machines) becomes necessary. You can't build reliable validation loops with simple LCEL chains — you need conditional edges, retry states, and capped iterations:
+
+```
+StateGraph:
+  START → query_enhancement → retrieve → validate_retrieval
+  validate_retrieval → (relevant) → generate → validate_answer
+  validate_retrieval → (irrelevant) → refine_query → retrieve  [max 3 retries]
+  validate_answer → (grounded) → END
+  validate_answer → (hallucinated) → regenerate → validate_answer  [max 2 retries]
+  validate_answer → (max retries) → return_best_effort → END
+```
+
+**C# Analogy:** This is a `StateMachine<TState>` with `IValidator<T>` checks at each transition — like a workflow engine (Elsa, Temporal) where each step can succeed, fail, or retry.
+
+**When to use:** Ambiguous queries, domain-specific Q&A where wrong answers are costly (medical, legal, financial), systems that need measurable quality guarantees, any production system where "good enough" isn't acceptable.
+
+> 🔗 **LangChain reference:** [Agentic RAG with Self-Correction (LangGraph tutorial)](https://docs.langchain.com/oss/python/langgraph/agentic-rag) — their official example of Hybrid RAG.
 
 ---
 
@@ -346,6 +398,22 @@ Ask these questions when designing a RAG system:
 **Q: Why summarize only older history, not all of it?**
 
 > **A:** Recent messages need exact wording for accurate follow-ups. If the user said "Use Pinecone not Chroma" two messages ago, a summary might lose that precision. Compressing only the older half preserves recent context exactly while still giving the LLM the gist of earlier conversation. The extra summarization call (~500 tokens) costs far less than sending all raw history.
+
+**Q: What is Hybrid RAG and why do production teams use it?**
+
+> **A:** Hybrid RAG adds validation loops to the retrieval-generation pipeline: query enhancement before retrieval, retrieval validation after search, and answer validation after generation. If any check fails, the system retries with a refined approach (up to a cap). Production teams use it because neither retrieval nor generation is reliable 100% of the time — users ask vague questions, retrievers return irrelevant chunks, and LLMs hallucinate even with correct context. Hybrid catches these failures before the user sees them.
+
+**Q: What are the three components of Hybrid RAG?**
+
+> **A:** (1) **Query enhancement** — rewrite vague questions into precise search queries before retrieval. (2) **Retrieval validation** — check if the retrieved chunks are actually relevant; if not, refine and re-retrieve. (3) **Answer validation** — check if the generated answer is grounded in the context and complete; if not, regenerate. Each component is an LLM call acting as a judge/validator.
+
+**Q: Why can't you implement Hybrid RAG with simple LCEL chains?**
+
+> **A:** LCEL chains are linear — data flows one direction through the pipe. Hybrid RAG requires conditional branching (retry or proceed?) and loops (refine query → re-retrieve → re-validate). This is where LangGraph's `StateGraph` becomes necessary — it models the workflow as a state machine with conditional edges, enabling cycles, retries, and capped iterations. In C# terms: LCEL is LINQ method chaining (linear), LangGraph is a workflow engine like Temporal or Elsa (branching, looping, state).
+
+**Q: How does Hybrid RAG differ from just adding retry logic to Agentic RAG?**
+
+> **A:** Agentic RAG trusts the LLM to self-correct — it *might* retry, or might not. Hybrid RAG codifies the validation externally: the developer defines what "relevant retrieval" means, what "grounded answer" means, and what happens on failure. The LLM operates *within* the developer's quality gates rather than deciding everything freely. It's the difference between hoping a developer writes tests vs enforcing a CI pipeline that blocks bad code.
 
 ---
 
