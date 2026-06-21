@@ -974,6 +974,33 @@ LLM looks at the question and THINKS:
 - **Deterministic** = calling `repository.Search(query)` directly in your controller — it always executes, no conditions.
 - **Agentic** = giving a `Func<string, List<Document>>` to a decision engine that might or might not call it based on the input.
 
+### "But Deterministic Always Retrieves — How Is That Cheaper?"
+
+This is a common confusion. "Always calling the retriever" sounds like more work. But **the retriever is almost free — it's the LLM that's expensive.**
+
+Here's what each approach actually costs per query:
+
+```
+DETERMINISTIC RAG (Section 9):
+  Step 1: Embed the query         → OpenAI embedding API   ~$0.00002  (negligible)
+  Step 2: Search Pinecone         → Vector similarity      ~$0.00000  (free tier / pennies)
+  Step 3: Stuff chunks + generate → GPT-4o LLM call        ~$0.01-0.03
+                                                    Total:  1 LLM call
+
+AGENTIC RAG (Section 10):
+  Step 1: LLM decides what to do  → GPT-4o LLM call #1     ~$0.01     (reasoning call)
+  Step 2: Embed the query         → OpenAI embedding API   ~$0.00002  (negligible)
+  Step 3: Search Pinecone         → Vector similarity      ~$0.00000  (free tier / pennies)
+  Step 4: LLM reads + generates   → GPT-4o LLM call #2     ~$0.01-0.03
+                                                    Total:  2 LLM calls (minimum)
+```
+
+**The retriever (embed + search) costs fractions of a cent. The LLM call costs ~1000× more.** So deterministic RAG makes **1 LLM call** while agentic makes **at least 2** — that's where the cost difference comes from.
+
+The retriever "always running" in deterministic RAG is like always running a SQL query — it's fast and cheap. The expensive part is the LLM reasoning, and deterministic RAG skips that extra reasoning step entirely.
+
+**C# Analogy:** Think of it like calling `dbContext.Products.Where(...)` (fast, ~1ms) vs calling an external AI service to decide *whether* to query the database and *then* querying it (slow, ~2 API calls). The database query is cheap either way — the extra AI decision is what costs money.
+
 ### The Full Picture (After Both Sections)
 
 | Factor | Deterministic (Section 9) | Agentic (Section 10) |
