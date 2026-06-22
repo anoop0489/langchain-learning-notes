@@ -36,7 +36,7 @@
 #   2. Packages: uv add langchain-core langchain-openai python-dotenv truststore
 #
 # USAGE:
-#   uv run 02-gist-of-langchain/session1_complete_demo.py
+#   uv run 02-gist-of-langchain/src/session1_complete_demo.py
 # =============================================================================
 
 import os
