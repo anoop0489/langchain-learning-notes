@@ -9,21 +9,22 @@
 # WHAT IT DOES:
 #   Runs four scenarios through the SAME chain to prove three concepts:
 #
-#   Scenario 1: "Can it answer engineering questions?"
-#     → YES. The system prompt allows it. Basic proof the chain works.
+#   Scenario 1: LCEL Chain
+#     We build a pipeline: prompt | model | parser — and invoke it.
+#     This is the core pattern. Everything else builds on it.
 #
-#   Scenario 2a: "Can it handle follow-up questions?"
-#     → YES — but only because WE sent the previous Q&A along with the new question.
-#     → Open LangSmith: you'll see 3 messages in the request (Human, AI, Human).
+#   Scenario 2a: Statelessness — WITH history
+#     We pass the previous Q&A along with a follow-up question.
+#     The LLM "remembers" because we explicitly included the prior exchange.
 #
-#   Scenario 2b: "What happens if we DON'T send the history?"
-#     → IT BREAKS. Same question, but the LLM is confused because it never saw the first exchange.
-#     → Open LangSmith: you'll see only 1 message in the request (Human).
-#     → THIS is the statelessness proof. The LLM remembers nothing. We control what it sees.
+#   Scenario 2b: Statelessness — WITHOUT history
+#     Same follow-up question, but we DON'T send the prior exchange.
+#     The LLM is confused. It has no idea what "both" refers to.
+#     Same chain, same model — the only difference is what WE passed in.
 #
-#   Scenario 3: "What if someone tries to hack it?"
-#     → The system prompt blocks it. The LLM refuses to answer off-topic.
-#     → But NOTE: this is NOT real security. It's a suggestion, not a firewall.
+#   Scenario 3: System Prompt Guardrails
+#     Someone tries to override the instructions and ask for credentials.
+#     The system message constrains the LLM to refuse.
 #
 # WHY THIS MATTERS:
 #   Every AI chatbot, copilot, and assistant is built on these three concepts.
