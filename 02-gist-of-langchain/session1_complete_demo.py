@@ -110,6 +110,7 @@ def main():
     model = ChatOpenAI(model="gpt-4o", temperature=0)
     parser = StrOutputParser()
 
+    chain_without_parser = prompt | model
     chain = prompt | model | parser
 
     # =================================================================
@@ -126,9 +127,8 @@ def main():
     print(f"\n  👤 User: {question_1}\n")
 
     # The LLM receives: [HumanMessage] — one message, fresh conversation.
-    answer_1 = ask(chain, [
-        HumanMessage(content=question_1),
-    ])
+    raw_ai_message = chain_without_parser.invoke({"chat_history": [HumanMessage(content=question_1)]})
+    answer_1 = chain.invoke({"chat_history": [HumanMessage(content=question_1)]})
     print(f"  🤖 AI: {answer_1}")
 
     # =================================================================
