@@ -20,3 +20,6 @@ Notes.txt
 # --- Vector store data (local Chroma, generated at runtime) ---
 chroma_db/
 *.sqlite3
+
+# --- Local demos (not committed to repo) ---
+/demos/
