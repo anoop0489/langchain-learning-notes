@@ -7,11 +7,23 @@
 #   3. System prompt as a guardrail — constraining what the LLM will do.
 #
 # WHAT IT DOES:
-#   Runs four scenarios through the SAME chain:
-#     Scenario 1: A compliant question (on-topic engineering query)
-#     Scenario 2a: Follow-up WITH history → works (LLM "remembers")
-#     Scenario 2b: Same follow-up WITHOUT history → breaks (proves statelessness)
-#     Scenario 3: A realistic prompt injection attack → system prompt blocks it
+#   Runs four scenarios through the SAME chain to prove three concepts:
+#
+#   Scenario 1: "Can it answer engineering questions?"
+#     → YES. The system prompt allows it. Basic proof the chain works.
+#
+#   Scenario 2a: "Can it handle follow-up questions?"
+#     → YES — but only because WE sent the previous Q&A along with the new question.
+#     → Open LangSmith: you'll see 3 messages in the request (Human, AI, Human).
+#
+#   Scenario 2b: "What happens if we DON'T send the history?"
+#     → IT BREAKS. Same question, but the LLM is confused because it never saw the first exchange.
+#     → Open LangSmith: you'll see only 1 message in the request (Human).
+#     → THIS is the statelessness proof. The LLM remembers nothing. We control what it sees.
+#
+#   Scenario 3: "What if someone tries to hack it?"
+#     → The system prompt blocks it. The LLM refuses to answer off-topic.
+#     → But NOTE: this is NOT real security. It's a suggestion, not a firewall.
 #
 # WHY THIS MATTERS:
 #   Every AI chatbot, copilot, and assistant is built on these three concepts.
