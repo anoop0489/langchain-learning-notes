@@ -594,7 +594,7 @@ This is the fundamental principle of context engineering: the quality of the out
 
 ### Why System Prompts Matter
 
-Every state-of-the-art AI agent has a carefully engineered system prompt. A leaked system prompt repository on GitHub (with ~90K stars) reveals:
+Every state-of-the-art AI agent has a carefully engineered system prompt. A popular open-source repository documenting system prompts of AI tools on GitHub (with ~90K stars) reveals:
 
 | Agent | System Prompt Size |
 |-------|-------------------|
@@ -778,5 +778,5 @@ Zero-Shot ──► Few-Shot ──► Chain of Thought ──► ReAct
 - [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models (Wei et al., 2022)](https://arxiv.org/abs/2201.11903)
 - [ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., 2022)](https://arxiv.org/abs/2210.03629)
 - [Context Engineering for Agents (LangChain Blog)](https://www.langchain.com/blog/context-engineering-for-agents)
-- [Leaked System Prompts Repository (~90K stars)](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools)
+- [System Prompts and Models of AI Tools (~90K stars)](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools)
 - [Anthropic: Effective Context Engineering for AI Agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
