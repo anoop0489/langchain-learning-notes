@@ -44,6 +44,11 @@ Building a production documentation helper — web crawling, agentic RAG, Stream
 * [11. Doc Assistant Theory & Concepts (Tavily, Agents, Streamlit, Memory)](./10-documentation-assistant/11_DocAssistant_Theory_And_Concepts.md)
 * [12. Doc Assistant Implementation (Crawl → Agent → Chat UI)](./10-documentation-assistant/12_DocAssistant_Implementation.md)
 
+### Section 11: The GIST of LLMs & Prompt Engineering 🧠
+*Folder: [`/11-llms-and-prompt-engineering`](./11-llms-and-prompt-engineering)*
+The theoretical foundations — what LLMs are, how prompting techniques evolved, and the shift to context engineering.
+* [13. LLMs, Prompting & Context Engineering (Zero-Shot → ReAct → Context Engineering)](./11-llms-and-prompt-engineering/13_LLMs_Prompting_And_Context_Engineering.md)
+
 ---
 
 ## 📖 Reference Guides
