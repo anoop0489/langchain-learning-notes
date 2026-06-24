@@ -1,0 +1,1213 @@
+Things to note for you:
+***** Represent the Section 
+*** Represent the chapters under the section 
+
+***** Secction 12: Let's Talk About LLM Applications in Production.
+
+*** chapter 76
+
+Here author discusses these topics  
+RUntime, Context Window, Hallucinations, Fine Tuning, Pricing, Response Validation, Security, Overkilling
+
+And here it is the acutal transcript of the video:
+Eden: Hey there, Eden here,
+and in this video I wanna talk about
+integrating agent into a production environment.
+And specifically I want to discuss
+the challenges in doing so.
+(graphics whooshing)
+So, we saw that when working with agents,
+we are using a lot of LLM calls
+because we're using the LLM as a reasoning engine.
+So, every step we're going to make
+and every tool we're going to use,
+it needs to come after an LLM call
+where the LLM has decided to use that tool.
+And this will result in multiple calls to the LLM,
+but not only will have multiple calls,
+but those will be sequential calls, one after another,
+where each one is waiting for the result of the prior one.
+So, this depends how complex is our task
+and how many reasoning steps do we need to make,
+and can easily escalate
+into a very long running application.
+So, we need to take that in mind.
+And there are some workarounds for this,
+like using a semantic cache and using an LLM cache,
+but we'll not discuss it in this course.
+The next thing I want to talk about is the context window.
+You notice that we send a huge prompt to the LLM
+every time we make a reasoning step.
+Now, most of LMS nowadays
+can handle around 32k tokens.
+It may sound a lot,
+but in a real-world application,
+we can easily surpass that limit.
+So, eventually, we are limited
+by the number of steps we can make
+because of the context window.
+Now, I know there are models like Cloud Anthropic,
+which can receive up to 1k tokens,
+but de facto working with 100k tokens
+sending to the LLM introduce us with a lot of problems,
+like the LLM tend to forget what's in the middle.
+See the paper of Lost in the Middle.
+Okay, so the third thing
+I want to talk about is hallucinations.
+Now, we know hallucination
+is when it's sent to the LLM a question
+and the LLM responds
+with something not relevant for that question
+because eventually the LLM
+is guessing one token after another.
+And retrieval augmentation, by the way,
+is a nice technique to reduce hallucinations
+because we ground the LLM with information
+that we send in the context.
+Anyways, 'cause the large language model
+is a statistical creature,
+then this means we have a probability
+of getting the correct answer.
+And the correct answer
+is actually choosing the correct tool to use.
+So, let's assume that we have 0.9 probability
+of getting the correct response
+that chooses the correct tool.
+Now, if we do this only once,
+that's okay and that's a very good probability.
+However, if we're making sequential calls
+one after another and after another,
+then by the multiplication law, after a few steps,
+and in this case after six steps,
+then we get that the probability
+for getting a good answer drops to 0.59%,
+and this is only for six consecutive calls.
+What if we have a huge task that requires more?
+Then this number drops even more.
+So, there are ways to solve it,
+and one of the ways is to use fine tuning.
+And by that I mean to take an LLM
+and fine tune it for tool selection.
+So, there are research papers about that
+and that people manage to fine tune LLMs
+to make the tool selection, for example, to run API calls
+to have them yield better results.
+So, instead of a 90% chance,
+the chance of getting the correct tool is much, much higher
+because the LLM is fine tuned on the tools
+that the agent have to its disposal.
+Okay, let's talk about pricing.
+Now, you know that we pay for the tokens
+that we send and receive from the LLM.
+Now, if you're using agents,
+you saw how big the prompts can get.
+And when we do this in scale by the millions,
+then you can figure out that the billing report
+we're going to get is going to be very high.
+And I didn't even mention GPT-4,
+which has a strong reasoning capability,
+but runs very, very slow and is very expensive.
+So, if we use that and we use it in scale,
+then we can get into a situation
+where it's not financially worth for us to run those agents.
+So, there are a couple of strategies to solve this,
+the first one is to use some kind of cache, semantic cache,
+instead of making an LLM call, we discussed this.
+And another one is to use retrieval augmentation
+for the tool selection.
+We're not going to show this in this course,
+but retrieval augmentation for the tool selection
+can also handle in a case
+where we have too many tools to choose.
+So, in that way, before we make the LLM call
+for the reasoning process,
+we do a semantic search and retrieve those relevant tools
+that have a high probability
+to be the correct tools to our answer.
+So, now we need to talk about response validation.
+By the way, all the topics I discussed
+are relevant for all LLM application
+and are real-world challenges.
+So, it's not only for agents,
+it's also for every LLM application.
+So, because we're making a call to the LLM
+and we're counting on it
+and based on that response
+we're going to maybe choose some tool
+or maybe output something to the user,
+then we need to have a mechanism that validates this.
+Because even if the LLM responds us with the correct answer,
+but it's not in the correct format,
+then it can mess up our application.
+So, testing it is a very complicated task.
+And I personally haven't encountered
+a robust solution for this issue.
+Okay, let's talk about security.
+And in iGenetic applications,
+we give the LLM capabilities to do stuff.
+For example, to run queries against the database,
+make an API call, or talk to a third party,
+and the agent has permissions to do all of this stuff.
+So, if some malicious user hijacks our prompt
+with prompt injection
+or get a hold of our API key,
+then they can have access into our tools.
+And if our database is proprietary
+and we don't want to expose it, then we are in a problem.
+So, security is a big issue,
+and overall we want to adhere
+to the least privilege principle,
+and that is to give those tools and to those agents
+the minimum permissions as they require.
+We want to have guardrails on the prompts
+we send to our agents
+and to allow and not allow maybe some prompts.
+So, there are many open source solutions for this.
+Now, I recommend using LLM Guard,
+which is an open source
+that I think is a very promising one,
+which offers a lot of functionality
+when it comes to LLM security,
+integrating LLMs in production.
+Now, the last topic I want to talk about
+is overkilling it when using agents.
+Agents are good when we have a deterministic sequence
+of steps we want to execute.
+If we know exactly what we want to execute
+and we can define it by talking or by writing code,
+then we don't need to use agents.
+I've encountered multiple people in companies
+trying to achieve things with LLM agents
+where the real solution and robust solution
+was to simply implement some deterministic code in Python
+that would achieve what they wanted.
+So, my advice to you before you use agents,
+really think if you can implement it yourself
+in some deterministic code.
+If you can, then I really don't suggest you using agents
+because, as you saw, it has a lot of challenges.
+And that's it for this video.
+And I really want to give a quick disclaim over here.
+I think agents are an amazing technology
+and they have a massive potential for us
+to achieve great things.
+I don't think it's easy going from a prototype
+to a production application.
+It is totally possible, but it has a lot of challenges.
+By no means, I'm not saying
+that agents are not ready for production, I didn't say that.
+I just mean that we need to be very careful
+when we use them because it comes with a lot of cost.
+And integrating such great technology
+comes with a cost, and we saw the challenges.
+
+
+*** chapter 77 LLM Application Development Landscape
+
+Here author discusses these topics  
+Simple LLM calls, VectorStores (RAG), Agents , Agents + VectorStores
+
+And here it is the acutal transcript of the video:
+Instructor: So let's have an overview
+of what's my take in the LLM applications landscape.
+I like to classify it into four main categories.
+The first one is company slash people
+that are writing LLM applications, which all boils down
+to a simple LLM call.
+Those applications slash features simply send inputs
+to the LLM, get a response back, maybe manipulate it a bit,
+but eventually display to the user.
+And that's it.
+Very simple, not sophisticated,
+but a lot of time can bring a lot of value
+to customers and to users.
+For example, an application I liked is this application
+that creates children's stories.
+When we give it the subjects and the topics.
+It will send those to the LLM
+and create a children's story with cartoons
+and with pictures, and it's very cool in my opinion.
+But the overall implementation is pretty simple.
+More advanced LLM applications will incorporate some kind
+of vector store
+and use the retrieval augmentation generation pattern
+with semantic search in those vector stores in order
+to get the relevant chunks, the relevant data
+to answer super specific domain related questions.
+For example, an application that I like is called Quiver,
+and it's also called the second brain,
+where you simply dump all of your information,
+whether it's PDFs, whether it's databases,
+whether it's videos or chat history,
+and it simply index them the information in a vector store
+and uses the RAG pattern, the RAG pattern
+with semantic search in order to QA over our data.
+So the idea behind this application is
+that you simply dump it all and then you can chat with it.
+Now, if we want to take our application up a notch as far
+as LLM complexity, we can incorporate agents
+and leverage the LLM reasoning engine in order
+to run non-deterministic code
+and basically have an agent that will decide which tools
+to use when it's the most appropriate.
+An interesting use case I saw is
+of a cybersecurity company called Torq,
+where they created an agent called Socrates which
+resolves and remediates alerts with non-deterministic steps.
+So it reads the alert information
+and then decide how to remediate it
+by utilizing the security tooling already connected
+to the Torq hyper automation platform.
+Excellent example of how to utilize agents
+for real world issues like cybersecurity.
+Now, the last pattern I wanna talk about is combining agents
+and vector stores with semantic search.
+So projects like AutoGPT, like GPT Engineer,
+they incorporate vector stores
+to implement something which is called a long-term memory
+and are using semantic search in order
+to achieve very advanced capabilities.
+Those capabilities can be mimicking human behavior
+agents talking and interacting with each other
+and solving complex tasks.
+Now, all those projects, AutoGPT, GPT Engineer,
+Baby AGI, they're in the very, very beginning
+and they're pioneering what's called autonomous agents.
+So to summarize this session, my main point was
+that we can classify every LLM application today to one
+of those categories.
+My goal in this course was to teach you how
+to implement those patterns yourself.
+So we learned about agents
+and we learned about vector stores
+and how to interact with the LLMs
+and the theory behind it so you can go
+and build your own applications.
+
+
+*** chapter 78 LLMs in Production : Privacy and Data Retention
+
+https://openai.com/policies/row-privacy-policy/
+https://developers.openai.com/api/docs/guides/your-data
+
+Here author discusses these topics  
+Privacy , Data Retention
+
+And here it is the acutal transcript of the video:
+Hey there.
+Eden here.
+And in this video, I'm going to cover some of the important concerns when dealing with managed large
+language models.
+And I want to cover here some key points about data retention and privacy.
+And I think those are very important issues that we should be aware of at least.
+And when taking a generative AI application to production, which uses large language models, then
+you have to answer questions like is the data being used for training purposes, or how long the data
+is being retained for and for which purposes, copyrights issues, and how can you use the generated
+text, and a lot of more things that you need to be aware of and you need to answer.
+Now, this is a huge, huge topic and I can go for hours to talk about it.
+And there are tons of requirements and rules and regulations, etc. in this video I'm going to go only
+on a few of them, so this is definitely not the full list of things you should be aware of, but just
+the beginning and something to help you get started and to give you an introduction to it.
+And before we begin, just a very important disclaimer, and this disclaimer is super important.
+I am not a lawyer.
+This is not a legal advice, and you should consult with your legal team and privacy team before integrating
+any LLM based solution in your enterprise.
+There are a lot of rules and a lot of regulations that I am not aware of, and the topic of data retention
+and privacy is very, very sensitive and should have appropriate handling.
+I am also not representing any LLM vendor here, and I'm not giving legal advice.
+And every LLM vendor is going to have a Eula, an end user license agreement where they have their terms
+of services and they specify how they handle your data.
+And it's a legal document that you should look into.
+Okay.
+I'm just giving you my $0.02 here.
+And again, I'm not a lawyer and this is not a legal advice.
+So this is a very important disclaimer.
+You should always talk to your legal team and privacy team and to act according to what they say.
+This video is for educational purposes, and I'm going to give you my $0.02 on this topic.
+So you should take everything I say in this video with a grain of salt.
+And you should really do your own research when it comes to this topic.
+Let's start by talking about data retention and what happens to our data that we send to the model to
+a managed model like OpenAI, GPT four or Mini, or Google Cloud's Vertex AI Gemini.
+And I want to make a very clear distinction over here.
+I'm not talking about the B2C direct to consumer products like ChatGPT or Gemini, which was formerly
+known as Bard, but I'm talking about the cloud APIs that they expose for enterprises and businesses.
+And again, I want to reiterate, I'm not a lawyer.
+This is not a legal advice.
+And you should do your own research.
+And if you're working for an enterprise, you should consult with your legal team.
+All managed vendors have a Eula and users license agreement, and you can see all of the details there.
+And this is a legal document which you can read and it has all the information.
+But I'm going to give you my $0.02 in this topic.
+And a lot of people are concerned what happens with their data.
+And they're worried that the managed data vendor are going to train their next model on data that they
+will be sending to the model or the generated output.
+And from what I saw, in most cases, at least in the top tier models, then there is a guarantee that
+they're not going to use the data that we send or the generated text to training purposes.
+So we get a guarantee that they're not going to use their data for the model training.
+At least that's the default behavior.
+If we do want to allow them to do this, we can opt in voluntarily for that.
+And by the way, this is a very valid concern because if we're working for an enterprise and we want
+to integrate an LLM based solution, we need to make sure this is the case, because we might be dealing
+with proprietary data of our organization that we do not want to expose, and we do not want to get
+leaked or to get trained on, God forbid.
+And if we have customers, we of course, do not want their data to be trained on, because probably
+we're going to have legal obligations that is going to protect their data.
+So this is the first thing I want to address.
+All right.
+So this was about training on data that we send to the LLM.
+Of course you should expect differences between different LLM vendors.
+And let's talk about data retention.
+And our vendors going to save the data that we send the LLM.
+And if so for how long.
+What kind of rules do they have for which purposes, etc..
+And in this example of OpenAI, we can see that it clearly says that in order to identify abuse, they
+may retain our requests for 30 days and after it it will be deleted.
+Or if there are other law requirements.
+And they do mention that for some customers they may have a zero retention policy, which is available
+where none of the data will be logged or persisted, and it's going to be only used for serving purposes.
+And of course, this may also change between vendors.
+I did see other vendors where they have a zero retention policy right from the get go, and in order
+to log and to retain some of it, you would need to explicitly opt in.
+So again, there are differences between the vendors and those may change over time.
+All of the rules.
+And one last disclaimer.
+So even when providers are going to guarantee that they're not going to train their model with our data
+and we're going to have zero retention policies.
+And for some organizations, this is simply not enough.
+Let's take the banking institutions, for example, or insurance companies, they usually have very
+strict regulations and very strict policies when it comes to privacy and when it comes to data retention
+and sharing customers data, because it is very, very sensitive.
+And for those companies, those promises and those guarantees from the LM vendors is not enough.
+And usually if they do want to integrate generative AI into their applications, they are going to self
+deploy open source models.
+And with self deploying open source models in their environment, they will have control over their
+data, their retention policies, and they have all the control they need.
+However, it will come with a cost because serving LMS is not that simple and they would need to handle
+scalability, durability, availability, all those ilities, which is a lot of operations work and
+it's not simple to do correctly.
+It also costs a lot of money and a lot of effort because they would need to host it on GPUs, and they
+would need people to maintain it and to.
+Handle the deployment.
+And of course they would need to handle the security.
+Because even open source models can have vulnerabilities in them, which I.
+Didn't discuss at all.
+And it comes with a price as well.
+And there is also.
+This middle ground of hosting the LMS, the open source LMS within their cloud environments.
+So they're going to use the managed services of cloud providers to.
+Deploy those open source LMS.
+So they shift the burden of all those edits to.
+The cloud provider, they still have control because it's going to be their.
+Cloud environment.
+And they can enforce their security controls in.
+Their cloud environment.
+And just to conclude in this video, I just wanted to.
+Introduce you with a couple of things that you need to consider when it comes to privacy and data retention
+when using large language models.
+This is a very deep topic and we can talk about it for hours.
+And my goal here in this video is just to give you an introduction and some things to concern.
+
+*** chapter 79 Generative UI/UX featuring Copilotkit
+
+https://docs.copilotkit.ai/langgraph-python
+https://www.copilotkit.ai/
+https://www.youtube.com/watch?v=nBephBv4zr0&t=3s
+
+And here it is the acutal transcript of the video:
+Hey there.
+Eden here.
+And in this video I want to talk to you about user experience and user interface in generative AI applications.
+So building the back ends of our generative AI applications is one challenge.
+And we can spend a lot of time in the back end building our agent and building our rack system and making
+sure that the output that we give the user is the correct output, that it's trustworthy, and a quality
+output.
+However, this is just one piece of the puzzle.
+In order to have our application complete, we need to create a beautiful user interface and a very
+natural user experience for our users.
+To be able to trust our application and trust between users and generative AI applications is something
+that we need to work for, because users know that generative applications are, let's just say, flaky
+and they not always yielding the correct responses.
+And they can fail sometimes.
+And there is a huge challenge of doing this correctly.
+And in this video I will be featuring copilot kit and copilot kit is an amazing open source which helps
+us bridge this gap of creating beautiful interfaces, but more importantly, more natural user experiences
+in our generative AI applications.
+And I think Copilot Kit offers us today the best building blocks for building a beautiful generative
+UI.
+And when I talk about generative UI, I mean, in general, the user interface of our generative AI
+application, which is based on the LLM.
+And I think that in order to create this trust between the user and our system, then we need to be
+transparent.
+So the user needs to know where does the answer come from.
+And for example, if we're building an agent then we need to be transparent on which tools does the
+agent have and which tools the agent is using to generate the answer.
+Why did he chose that tool?
+So the reasoning behind the agent may be some intermediate calculations until we get the final answer.
+So we can see how the final answer is being curated.
+And even in a Rag application, we need to be transparent and to show the user which documents did we
+use to generate the answer so it will know where it's grounded from.
+And all of this is going to create better trust between the user and our generative AI application.
+All right.
+Let's talk now about copilot Kit.
+And by the way, all of the demos you saw in this video are taken from the copilot kit documentation.
+They're open source.
+And in my opinion, they're pioneering right now the landscape of generative UI and generative UX.
+So in their repository you can skim around and you can find some starter kits to help you implement
+beautiful front ends for your back end generative AI applications.
+So this is not a full stack course, so I won't be going into that deeply.
+I'm simply introducing now the topics, but overall they simply introduce a bunch of components and
+hooks that we can use in our front ends, which makes it super easy to build generative UI and to build
+very good user experience on top of our generative AI applications, which is powered with langchain
+or with langgraph, etc..
+I want to elaborate on the support for langchain and langgraph applications, and they introduce co
+agents which seamlessly integrates with langgraph backends.
+And I think the video here by Ariel from copilot Kit, which I will link in this video, is demonstrating
+this beautifully.
+And when we have a langgraph application, so a lot of things and a lot of moving parts are happening.
+We have the state which is constantly changing.
+We have intermediate results in that state.
+We have nodes that are executing, maybe nodes that are executing in parallel.
+We also have human in the loop where we stop the execution of the graph and we go to take the user input.
+And then we want to resume the execution of the graph.
+So a lot of moving parts here.
+And to build a frontend for this.
+To be honest it sounds like a nightmare.
+But copilot kit did a very good job to implement components for all of that I discussed all built on
+top of langgraph applications, which I think is super important and it's super easy to integrate both
+langgraph with copilot kit.
+I just want to be clear, I don't have any affiliation with copilot kit.
+I genuinely believe this is a good project, and I think they're doing an amazing job in the field of
+generative UI.
+
+*** chapter 80 Official Langchain Academy Courses
+
+https://academy.langchain.com/
+https://academy.langchain.com/courses/foundation-introduction-to-langchain-python
+https://academy.langchain.com/courses/intro-to-langgraph
+
+-: Hey there, Eden here.
+
+And in this video I want to show you some cool resources
+that the LangChain team has officially curated for us
+on learning the LangChain ecosystem.
+So in the LangChain website over here,
+if I go to Resources, we have here the LangChain Academy.
+Now the LangChain Academy is a bunch of online courses,
+which are free, which offer valuable information
+on how to use and how to build on the LangChain ecosystem.
+So for example, I show in my course the gist of LangSmith.
+I certainly do not go in depth
+and there is a lot of depth in the LangSmith product
+on tracing, on monitoring,
+on evaluating our LLM applications.
+And you can learn more about this
+in this LangSmith course over here.
+So let me just show you how to go to this course.
+Going to sign in into my user.
+So here I can go and I can enroll for free.
+And here we have the video lessons.
+All right, so this is the course.
+You can see it right now on the left side,
+you can see all the videos in the different sections.
+And I think it's a very good course
+if you want to take an application from a POC
+and to take it to production.
+Because if you want to do this, you have to trace it,
+you have to monitor it,
+you have to evaluate it on real-time,
+and you need to collect human feedback on your users.
+And what answer did you generate?
+Were they good, were they bad?
+And overall, this course gives a very good introduction
+on how to use the LangSmith service in order to do so.
+Now, I think this is one of the best,
+if not the best products for tracing, for observability,
+and for monitoring LLM applications right now.
+So it doesn't really surprise me
+because LangChain are the leaders in this ecosystem,
+at least the way I see it.
+So you can take a look at the videos
+and all of the videos comes with resources
+that you can actually use and you can download,
+you can check out the GitHub repositories if you want
+to run things locally or in your notebooks.
+So I really do recommend it and it's really well curated
+and it's really well produced.
+So good job to the LangChain team
+and I really recommend this course.
+
+*** chapter 81 Open Source LLMs vs Managed LLM Providers (Deepseek)
+
+Eden Marco: Hey there, Eden here.
+And in this video,
+I want to address a commonly asked question
+about using LLMs in production.
+So, this is the debate whether to use an open source LLM,
+like Deepseek, like Llama 3.2,
+or to use managed large language models
+like GPT-4o mini by a OpenAI,
+or using Sonnet by Anthropic,
+or using Google Gemini.
+And my point of view is going to be the point of view
+of enterprise organizations
+and what do I suggest them doing?
+Of course, there is no one size fits all,
+and I think every use case
+should be considered independently.
+And I'm going to give you my general opinion
+and I will try to touch on as many aspects
+as I can when it comes to this debate.
+Just a very important disclaimer,
+and this disclaimer is super important.
+I'm not a lawyer.
+This is not a legal advice,
+and you should consult with your legal team
+and privacy team before integrating any LLM-based solution
+in your enterprise.
+There are a lot of rules
+and a lot of regulations that I'm not aware of,
+and the topic of data retention
+and privacy is very, very sensitive
+and should have appropriate handling.
+I'm also not representing any LLM vendor here
+and I'm not giving legal advice
+and every LLM vendor is going to have a EULA,
+an end user license agreement
+where they have their terms of services
+and they specify how they handle your data.
+And it's a legal document that you should look into, okay?
+I'm just giving you my 2 cents here.
+And again, I'm not a lawyer and this is not a legal advice.
+So, this is a very important disclaimer.
+You should always talk to your legal team and privacy team
+and to act according to what they say.
+This video is for educational purposes,
+and I'm going to give you my 2 cents on this topic.
+So, you should take everything I say in this video
+with a grain of salt
+and you should really do your own research
+when it comes to this topic.
+All right, so let me start by saying that right now,
+at least in 2025,
+open source models have gone a long way
+and they are becoming quite good.
+And we have models like Deepseek,
+which has amazing results in benchmarks
+and can actually outperform managed models.
+And in the future, it is inevitable
+that we're going to have more and more open source models
+which outperform those managed large language models.
+Okay, so let's start
+about using open source models in production.
+So, first of all, allegedly it's going to be cost effective
+because they're free,
+and they're cheaper sometimes to operate
+because they're smaller,
+they proprietary models.
+So, this is going to be with a question mark
+because I don't believe in large scale
+that they're going to be actually much cheaper.
+All right.
+And let's talk about customizations
+because organizations can fine-tune those models
+for specific tasks or domains
+that potentially can outperform
+those general purpose proprietary large language models.
+And I think one of the major advantages
+of using open source models in production for organizations
+is the control and privacy.
+So, companies can host their models, their sales,
+on their internal servers,
+so the data doesn't leave their servers
+and they can keep it safe and private.
+And I think this is especially true
+for companies which are highly regulated,
+like banks, maybe hospitals
+or organizations dealing with health data
+which are under compliance and under heavy regulation.
+All right, so let me now tackle those advantages.
+So, cost effectiveness is actually not true in my opinion
+because this means even though the model is free,
+because it's open source and we can actually use it
+or locally in our machine,
+but deploying it so that it can actually be served
+to customers in large scale is a very, very hard task.
+We need to handle availability, durability,
+scalability, all the agility.
+We need to handle security
+and we need to handle a lot of things.
+And now our task becomes,
+rather than developing an LLM application,
+but making an LLM model be able to serve our customers
+and to handle our scale.
+So, I think this really derails the goal
+of using open source models
+because it shifts all the responsibility
+and all the work to start handling a lot of operations.
+And one might argue that we can use a managed services
+that host those open source models,
+so to use services like Grok.
+So, they are correct, but once we do that,
+we actually lose a lot of the benefits
+because we wanted them to be on our server
+so they can be private
+and we'll have control over what's going to be generated.
+And once we use those services like Grok, then we lose that.
+And let's talk about pricing.
+Whether we deploy it ourself, it's going to cost a lot.
+If it's not going to cost a lot of compute
+and GPUs to serve those models,
+it's going to cost a lot because we need
+to pay for engineers to deploy them
+and for operations team to handle them and to monitor them.
+So, a lot of costs is involved of deploying those LLMs,
+open source of LLMs.
+And if we'll go even to managed services like Grok,
+to use them,
+then the pricing is not that compelling
+and it's not that cheaper from those managed LLMs,
+proprietary LLMS from vendors like OpenAI,
+Anthropic, and Google and many other more.
+And the trend of those first party models
+are going to be that they're getting better,
+faster, and cheaper as we go in time.
+All right, so let me talk about benefits
+of using the managed LLMs.
+So, those proprietary models that are offered as a service.
+And let's talk about the advantages.
+So, first of all, the ease of use.
+They're super easy to use
+and they're simple to integrate
+and we don't need to handle deployment.
+So, it reduced the time to market
+because we can simply plug and play.
+They're very reliable and offer support
+because the vendors provide professional support and updates
+and optimizations as we go in time.
+And regarding compliance.
+So, most LLMs are actually compliant for SOC 2
+and for HIPAA,
+and every vendor can tell you if they're compliant or not
+and to which compliance issues.
+All right, and let's talk now also about performance.
+So, those,
+managed LLMs of the big vendors
+are usually quite good and they offer very quality results.
+And let's talk about the elephant in the room.
+So, sending a sensitive data to a third party service,
+it may not be suitable for all organizations,
+however many organizations are cloud-based.
+And if they're cloud-based,
+then their data is already in the cloud.
+So, they're storing their databases in AWS
+or in Google Cloud, and the data is already there.
+So, why is it so scary sending some prompts
+to those vendors?
+Because for example, let's say Anthropic.
+So, Anthropic, has their model available
+also on AWS Bedrock and on Google Cloud.
+So, those customers which deploy their services
+on those clouds can actually consume the service.
+So, it's going to stay on the cloud already.
+And if you're example using Gemini in Google
+and you're already deployed on Google Cloud,
+then it doesn't differ than using another database
+or another managed services.
+And I also want to address a fine-tuning.
+So, you can actually fine-tune proprietary models
+and the vendors actually offer this capability.
+However, I'm not personally a big fan of fine-tuning
+because in my opinion, in most cases,
+we don't really need it and it's simply going to cost us
+whether it's time creating our dataset for fine-tuning
+or the actual compute to fine-tune the model.
+And I think because models are so much better now,
+and with the right prompt
+and right few shot examples,
+we can achieve awesome results which are acceptable
+and won't require us to go and fine-tune a model.
+Let me know if you want me
+to make a video elaborating on this topic.
+
+
+*** chapter 82 Confidence in AI Resutls By Assaf Elovic & Harrison Chase
+
+https://www.langchain.com/blog/the-hidden-metric-that-determines-ai-product-success
+
+Welcome
+
+Aden is here.
+Have you ever wondered why some AI products are taking off and everyone is starting to use them?
+Others, even with really cool technology, don't seem to have gotten attached to it.
+It turns out that the secret mix often has much less to do with how accurate or complex AI is
+Technical.
+So my friends Assaf and Harrison wrote this great article about it.
+They say the real thing that makes a difference is something they call CAIR.
+This means trusting the results of the AI.
+It's not just a fluffy idea.
+You can actually see how much you have of it.
+Guess how they might change and work to improve them.
+And frankly, this is the main thing that decides whether your AI product will work.
+No matter how cool the stuff under the hood is, getting people to use something
+It's about overcoming their fear and building trust.
+People need to feel good about using AI to really jump in.
+So how can we even figure out this about trust.
+This is where CAIR comes in.
+CAIR is basically the good things that people get in exchange for the hassle they deal with.
+It's pretty much a value divided by risk, multiplied by how much effort it takes to fix things.
+Let's analyze it simply.
+Value.
+These are the good things that users get when the AI actually does what it's supposed to do.
+Does it save them time?
+Do you save them money?
+Help them make something new.
+Risk.
+This is what happens if the AI gets something wrong.
+If AI messes it up, is it just a little annoying or can it cause big problems?
+Patch This is the amount of work that a user does to fix the AI error.
+Is it hard to undo the mistake?
+Do they have to start over, or is there an easy way to hit the back button?
+When CAIR is high, people get excited and jump in.
+When it's low, no one uses it.
+Clear and simple.
+The really important thing here is that CAIR comes mostly from how the product is designed, not just how well it works
+Artificial intelligence itself.
+Yes.
+Okay.
+If your eye always fails, the value is zero and CAIR will fail.
+But we're talking about things that you as a product team can actually control their risk and how easy it is
+Fix it.
+Look at the indicator, a code editor with built-in AI has become extremely popular.
+Code generation with AI.
+Sounds risky, doesn't it?
+A bad suggestion may break something quite important, but the cursor designed the experience to feel the maximum
+A measure of confidence when using his idea.
+Low risk.
+The code happens there in your editor.
+It doesn't automatically change your live system.
+Patch is low.
+If the suggestion isn't good, just tap Delete or overwrite it.
+It is very easy to fix.
+High-value developers save massive amounts of time and mental power.
+So, CAIR is equal to high divided by low by low, which is very high.
+This is just clever product design.
+Imagine if the cursor automatically saved the code changes directly into the main code branch.
+The risk will be high, even with easy ways to revert to older versions.
+Low correction.
+CAIR will be much less.
+This shows how important it is to separate the test from putting things on live.
+Creative tools like Jasper work in a bit of the same way.
+It makes me feel like an assistant, not something completely stand-alone.
+You get the ideas, but you are the one who has the last word.
+This keeps the risk low and the correction low, giving you high CAIR.
+Now let's take a look at some of the features on Monday.com that uses artificial intelligence.
+Their AI cubes can do things automatically and change your boards.
+These boards are often like the heart of a company, containing important information about how things are done.
+Medium and incorrect risks and automation can mess up project timelines, send incorrect information, or spoil
+Other things are related to it because the paintings are related to each other.
+Fixing something wrong could mean looking in a lot of different places to find the value of the changes
+High automatic and manually canceled.
+Automating tedious tasks on teams can save a lot of time.
+CAIR is equal to high divided by mean by medium, which is medium.
+This kind of mild CAIR explains why people hesitate, especially in the paintings they use for things
+Very important.
+Users have to agree to changes they're not entirely sure about, and agree to them before they see how
+It's going to work out exactly.
+The main idea is to overhaul the obvious by adding preview mode.
+Let users see exactly what changes the AI will also make before they actually make them.
+This one change reduces the risk from medium to low.
+A new CAIR is equal to the highest divided by the lowest multiplied by the average, which is the highest.
+This makes people feel more confident and more likely means that more people will use it.
+And it did all of this without changing the AI model itself.
+These insights are extremely important in high-risk areas such as money, objects, and health.
+
+*** chapter 83 AI FOMO is the New Normal
+
+Hey there, Eden here.
+And this video is all about FOMO, the fear of missing out,
+and in the ever-changing rapid-pace environment
+that we live in.
+And specifically I'm talking
+about the AI development environment.
+So there is this blog which Andrej Karpathy wrote
+at the end of 2025, which really resonated
+with a lot of people, including myself.
+And I think it encompasses a lot of ideas
+which I actually agree and believe in.
+And this ex post is Andrej's sharing his feelings
+on this environment that we live in.
+So he says that, "I've never felt
+this much behind as a programmer."
+So this is very true and I can totally resonate with that.
+And I feel it every day
+because there are new things coming out every day
+and it's really hard, sorry, it's impossible
+to keep track on everything
+that is happening with all of the AI development.
+"The profession is being dramatically refactored
+as the bits contributed
+by the programmer are increasingly sparse and between.
+I have a sense
+that I could be 10X more powerful
+if I just properly string together
+what has become available over the last year,
+and failure to claim the boost
+feels decidedly like skill issue."
+And here he is referring to the FOMO feeling
+that we have all been living with,
+because we see tons of announcements
+and we really don't have the time
+to go and dive into everything.
+He says that there's a new programmable layer of abstraction
+to master in addition to the usual layers below,
+involving agents, sub-agents, their prompts,
+context, memory, modes, permissions,
+tools, plugins, skills, hooks, MCP, LSP,
+slash commands, workflows, IDE integrations,
+and the need to build an all-encompassing mental model
+for strengths and pitfalls
+of fundamentally stochastic, fallible, unintelligible
+and changing entities suddenly intermingled
+with what used to be good old-fashioned engineering.
+And the TL; DR for this
+is that the software stack has changed.
+We no longer write code, we write prompts that write code.
+We write prompts that execute
+in agents or subagents which invoke tools,
+and we get the artifact,
+and we are becoming the orchestrators.
+And the skill of software engineering
+is transferring from being a good coder
+of knowing the right syntax
+and how to use the technologies,
+but to have a more higher-layer orchestrator role.
+So we now manage a team of agents
+where each agent is doing something else.
+And I really like the comparison
+of a team lead which manages engineers.
+So the team lead goes
+and tells the engineers what to do.
+The team leader reviews their work, gives them feedback,
+and these loops goes on and on and on
+until we get the final product.
+And the same work
+a team lead is doing with engineers, we do with our agents.
+We give the agents tasks, we see how they're doing,
+we sometimes give them the correct tools
+and the correct skills to perform those tasks.
+And the work shifted more to review
+than to the actual writing and implementation.
+And this is a fundamental shift
+that we are experiencing right now.
+Now, all of the tech stacks of agents,
+subagents, MCP, LSP, slash command,
+workflows, IDE integrations, this is all true,
+and this is the new tech stack.
+This is the new programming language of the future.
+And I think we have great privilege
+to experience this firsthand as everything rapidly evolves.
+So we are actually witnessing a paradigm shift
+and a new abstraction layer
+that we are going to work in order to create software.
+So if in the beginning of software,
+people used to have punch cards,
+which they give the machine
+and this would run the code, then we had Assembly,
+then we had C++, which abstracted Assembly,
+then we had Python, which abstracted C++,
+so now we're in an era
+where programming languages are abstracted
+and English now is the new abstraction.
+And the real challenge is for us to orchestrate
+how to work with those new abstractions
+and to learn to work with their limitations
+and to solve those limitations
+and to continuously push the limits.
+And it talks here about good old-fashioned engineering.
+And I have to give you an example
+from my personal experience.
+So when I was a software engineer,
+I hated writing regular expressions.
+I hated it.
+And there is this website,
+I think it's called regex101.com,
+and this was a website
+that really made things easier
+when writing regular expressions.
+So we had in our thing, this guy,
+he was really, really good in writing regexes.
+And every time I needed to go and write one,
+I would always go and ask him.
+And it was really a skill,
+and he was renowned to it in the entire company
+that he knew how to write regex.
+So everyone who needed to write a regex,
+if it was something complicated and not trivial,
+that guy was the address.
+We always went and asked for this engineer's help.
+And today, this skill is actually not useful.
+It's like learning how to navigate in a map
+in order to drive somewhere.
+You have Google Maps, you have Waze,
+and today, you can simply ask an LLM
+or Cloud Code or Cursor
+how to write the regular expression
+for what you're looking for.
+So, the good old-fashioned engineering is changing.
+And there are a lot of skills and techniques
+and practices that software engineers had
+which are no longer relevant.
+And I think being a good software engineer
+is simply to be a good problem solver,
+and simply being curious,
+I think those are the most important skills.
+And this is valid for the old software engineering era
+and it's valid for the future software engineering era.
+And I think curiosity today
+is having much more impact on your skills.
+Because curiosity, this is what driving the change.
+This is what driving to push the limits
+and to try things new
+and to learn how to do things differently
+and potentially better.
+And Andrej continues, he said,
+"Clearly some powerful alien tool was handed around,
+except it comes with no manual
+and everyone has to figure out how to hold it and operate it
+while the resulting magnitude nine earthquake
+is rocking the profession.
+Roll up your sleeves to not fall behind."
+And I think the key part here is,
+"comes with no manual."
+And here, actually I think the imagination is the limit,
+because all the technology we're seeing of agents,
+of coding agents,
+of how impressive they get
+is a building block on a building block
+on a building block on a building block
+that will stack up one after another,
+each one using the abstraction below.
+And it's really amazing to live and see this in action.
+And I was lucky enough
+to jump on this train when it began,
+and I saw how everything evolved,
+and I saw how one abstraction
+got better and better and better,
+and then there was another layer of abstraction
+that was created on top of it, which gave us insane results.
+And I think the best way to have a deep understanding
+is to go back in time and see how things evolved.
+Because when you see how things evolved in this space
+and you see the iterations,
+for example, estate agents,
+it all started from a ReAct prompt.
+Then this ReAct prompt evolved to function calling,
+then with function calling, we got into agentic workflows.
+And then after that,
+we are in this deep agents era right now
+and task delegation and subagents.
+And when you're seeing this firsthand
+and when you jump on the train
+and you see how abstraction is solving problems
+from the early abstraction,
+you really get in-depth understanding.
+And it really removes a bit this FOMO feeling,
+because you know what problems exist today,
+and when new tools come, you know what they solve.
+Now, it says everyone has to figure out
+how to hold it and operate it.
+So the key thing here is that, of course,
+the best practices are things that are in the making.
+And we don't have manuals,
+we don't have official documentations of imagination,
+because it really boils down to imaginations
+and to try things and to experiment.
+So I think this area here
+that we're living in, experimentation is key.
+And getting our hands dirty,
+as it says here,
+is very important in order to do this experimentation.
+And in my opinion,
+this is the moral of the story of this tweet.
+It's sort of assuring us and calming us,
+saying that, "Hey, we live in this FOMO world,
+and even Andrej Karpathy,
+who is a renowned computer scientist,
+even he feels the FOMO.
+Even he feels not knowing enough and falling behind."
+And the way to solve it is to get your hands dirty
+and to start experimenting.
+And in order to solve this FOMO
+is to roll up your sleeves
+and to start getting your hands dirty and experimenting.
+Now, I have to tell you, the FOMO,
+this is something here to stay.
+You are always going to feel this FOMO.
+I feel it myself.
+And I think here focus is really, really important as well.
+There are lots of tweets every day,
+lots of new technologies, new products
+planning to solve X and X and Y.
+And I think the skill of distilling the noise
+and focusing on what's important,
+it's really, really important in this era,
+because this is a rabbit hole.
+If you go into Twitter, you start scrolling around,
+then it's going to have tons of content.
+And there is this infinite rabbit hole we can go into
+if we don't focus.
+And my two cents is that when I go through Twitter,
+I see what's new.
+I don't go through everything.
+I don't dive in deep into everything.
+If I found something that interests me,
+that solves the problem
+that I'm really interested in solving,
+I go, I dive deep, and I get my hands dirty.
+Cool, so that's it for this video.
+And I think my main key point here
+is that you are not alone with the FOMO.
+everyone is experiencing, including myself,
+including Andrej Karpathy.
+And we need to accept this FOMO
+and we need to keep living with it.
+
+*** chapter 84 Finished Course ? What's next?
+
+-: Hey guys, Eden here, I hope you joined the course
+
+and I would really appreciate if you can write me a review.
+This really, really helps.
+Now I want to take a recap of this entire course
+and what we did so far and how to go next.
+So the main idea for this course
+was to give you an introduction
+and an elaborate introduction
+for LLM application development.
+We covered two super important patterns
+when it comes to developing LLM applications.
+The first one is using agents
+and leveraging the reasoning capabilities of the LLM,
+creating agents which can execute non-deterministic actions,
+so this was the first part.
+And the second part was dedicated
+for retrieval augmentation, for utilizing vector stores
+and semantic search and embeddings
+in order to chat over our proprietary data
+and leveraging this capability.
+So every LLM application is either using this pattern
+or that pattern or simply making a call to the LLM directly,
+and you have now the tools
+in order to create those applications.
+So now let's talk about what's next
+and what do I suggest you're doing in your learning journey
+of LLM application development.
+So if you've been following along this course,
+you probably noticed that developing an LLM application
+is not that simple.
+Coming up with this perfect prompt,
+which would get the best response for the LLM,
+requires a lot of work and investing a lot of time.
+And what happens if the LLM suddenly changes
+and now the prompt is not working as expected?
+And what if we want to consider other LLMs in other models
+which are faster, maybe cheaper, or maybe more secure?
+So we would need to take this prompt
+and adjust it to the other LLM.
+So prompt management is a really important issue
+when it comes to LLM application development.
+We also need to monitor our LLMs.
+So we want to see how fast are we getting our response,
+what's the latency?
+How much does each request cost us
+and how much are we going to pay to the LLM vendors?
+We also have debugging, where something goes wrong,
+and we want to understand why the LLM
+is not returning us the correct response
+and the response that we want.
+And that can be a challenge,
+especially when we're dealing with agents
+and of course, evaluation.
+Even if we use the LLM,
+how can we know that the response
+that we get from the LLM is good?
+So we want to have tools
+that help us automate all those processes,
+because if we're going to evaluate
+the LLM response manually,
+this would take a lot of time and it doesn't scale.
+So all of those problems are being bundled together
+into a new evolving field called LLMOps, LLM operations.
+And there are several of popular tools
+which can help us solve
+and to perform better LLM operations.
+One famous one is LangSmith by LangChain.
+And LangSmith is a unified platform
+that enables developers
+to build production-grade LLM application.
+And it helps with debugging, testing, evaluating,
+and monitoring all of the applications,
+and allowing us developers
+to have quick and efficient development life cycles.
+So LangSmith currently is not open source,
+so this is something you should consider,
+but if you want open source alternative,
+you can use Pezzo
+and Pezzo really helps with prompt management and tracing
+and monitoring our LLM operations.
+So we should also check out Pezzo, in my opinion.
+I want to talk about LLM security for a moment.
+So in this course,
+we haven't really talked about this subject.
+So there's a difference
+when we develop an LLM application locally,
+between deploying it into production,
+because once it's deployed in production
+and we have real customers using it,
+then we need to make sure that our LLM application
+is threat safe.
+And that's a pretty challenging thing to do
+because large language models and usage of them
+bring a lot of new attack vectors.
+So things like prompt injection and agents accessing data
+that they shouldn't access.
+So those things are real world problems
+that we need to take account of.
+So recently, LangChain made a huge repository change
+where all the code that was not safe
+and held new vulnerabilities
+was moved to this experimental directory.
+So overall, security is something important in my opinion,
+and maybe I'm just mentioning it
+because I come from a security background,
+but I think it's important to know and to explore,
+especially when we are dealing with LLMs.
+Now let's talk about resources and where do I suggest you go
+to find new information
+when it comes to generative AI application developments,
+and LangChain, LangSmith, other frameworks, all of that?
+So really the two things I highly suggest you do,
+and in my opinion, it would cover most of it,
+is one to follow the LangChain blogs,
+so every week they release new blog,
+and new ideas, new implementations about generative AI
+and gen AI application development.
+And I think it's an excellent source of information
+for you to keep going.
+And the other thing I highly suggest you joining Twitter
+and reading about generative AI in there,
+there are a lot of people that post things
+about researchers and about new applications,
+new use cases, and new ways to optimize things.
+So I highly recommend you joining Twitter
+and follow it there because all the news,
+all of that are being directly streamed into Twitter.
+So that's pretty much it.
+I do update this course frequently.
+So when something new and important comes out,
+I do update this course.
+And I hope you enjoyed this course,
+and if you do want to support me,
+I'd appreciate a Udemy review.
+This really helps me to spread around the world,
+and thank you so much.

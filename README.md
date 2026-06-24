@@ -49,6 +49,11 @@ Building a production documentation helper — web crawling, agentic RAG, Stream
 The theoretical foundations — what LLMs are, how prompting techniques evolved, and the shift to context engineering.
 * [13. LLMs, Prompting & Context Engineering (Zero-Shot → ReAct → Context Engineering)](./11-llms-and-prompt-engineering/13_LLMs_Prompting_And_Context_Engineering.md)
 
+### Section 12: LLM Applications in Production 🚀
+*Folder: [`/12-llm-apps-in-production`](./12-llm-apps-in-production)*
+The capstone — production challenges, the LLM landscape, privacy, open-source vs managed, CAIR framework, and AI FOMO.
+* [14. LLM Apps in Production (Challenges, Landscape, Privacy, CAIR, Strategic Decisions)](./12-llm-apps-in-production/14_LLM_Apps_In_Production.md)
+
 ---
 
 ## 📖 Reference Guides

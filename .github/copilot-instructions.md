@@ -147,3 +147,4 @@ XX-section-name/
 | 9. GIST of RAG | `09-gist-of-rag/` | ✅ Complete |
 | 10. Documentation Assistant | `10-documentation-assistant/` | ✅ Complete |
 | 11. GIST of LLMs & Prompt Engineering | `11-llms-and-prompt-engineering/` | ✅ Complete |
+| 12. LLM Apps in Production | `12-llm-apps-in-production/` | ✅ Complete |
