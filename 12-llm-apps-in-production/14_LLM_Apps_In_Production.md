@@ -2,7 +2,7 @@
 
 A comprehensive guide to the real-world challenges of shipping LLM applications, the four categories of LLM apps, privacy/data retention concerns, and strategic decisions around open-source vs managed models.
 
-*Based on Section 12: Let's Talk About LLM Applications in Production (Chapters 76–83)*
+*Based on Section 12: Let's Talk About LLM Applications in Production (Chapters 76–84)*
 
 ---
 
@@ -10,7 +10,7 @@ A comprehensive guide to the real-world challenges of shipping LLM applications,
 
 | # | Section | What You'll Learn |
 |---|---------|-------------------|
-| 1 | [Key Definitions](#key-definitions-interview-ready) | 20+ terms covering production challenges, deployment models, and AI product design |
+| 1 | [Key Definitions](#key-definitions-interview-ready) | 25+ terms covering production challenges, deployment models, LLMOps, and AI product design |
 | 2 | [Production Challenges for LLM Agents](#deep-dive-production-challenges-for-llm-agents) | Runtime, context window, hallucination compounding, pricing, security, overkilling |
 | 3 | [The LLM Application Landscape](#deep-dive-the-llm-application-landscape) | Four categories from simple LLM calls to autonomous agents |
 | 4 | [Privacy & Data Retention](#deep-dive-privacy--data-retention) | Training on your data, retention policies, B2C vs API, regulated industries |
@@ -19,7 +19,8 @@ A comprehensive guide to the real-world challenges of shipping LLM applications,
 | 7 | [Confidence in AI Results (CAIR)](#deep-dive-confidence-in-ai-results-cair) | The Value / (Risk × Effort) framework for AI product success |
 | 8 | [AI FOMO & The Evolving Developer Role](#ai-fomo--the-evolving-developer-role) | Andrej Karpathy's take, the new abstraction layer, how to cope |
 | 9 | [LangChain Academy Resources](#langchain-academy-resources) | Official free courses for continued learning |
-| 10 | [Interview Q&A](#interview-qa-anchors) | 14 production-focused questions with answers |
+| 10 | [What's Next — LLMOps & Continuous Learning](#whats-next--llmops--continuous-learning) | The LLMOps field, four pillars, tooling, resources for staying current |
+| 11 | [Interview Q&A](#interview-qa-anchors) | 17 production-focused questions with answers |
 
 ---
 
@@ -55,6 +56,11 @@ This section is the **capstone** of the course. After building LLM calls (Sectio
 | **CopilotKit** | "Open-source generative UI framework" | A React-based library for building AI-native user interfaces with LangChain/LangGraph backends — provides chat components, co-agents, and human-in-the-loop UI patterns. |
 | **CAIR** | "Confidence in AI Results" | A framework for measuring AI product adoption: Value ÷ (Risk × Effort to fix). High CAIR = high adoption; low CAIR = users avoid the feature regardless of AI quality. |
 | **Generative UI** | "AI-driven user interfaces" | User interfaces specifically designed for generative AI applications — emphasizing transparency, trust, intermediate results, and source citations. |
+| **LLMOps** | "DevOps for LLM applications" | The emerging field of operationalizing LLM applications — covering prompt management, monitoring (latency, cost), debugging LLM responses, and automated evaluation. Analogous to MLOps for traditional ML. |
+| **Prompt Management** | "Version-control and track your prompts" | The practice of versioning, testing, and managing prompts across LLM model changes — critical because a prompt that works on GPT-4 may not work on GPT-4o-mini or a different model. |
+| **LLM Evaluation** | "Automated quality assessment of LLM outputs" | Using automated tools and metrics to assess whether LLM responses are correct, relevant, and safe — essential because manual evaluation doesn't scale. |
+| **LangSmith** | "LangChain's LLMOps platform" | A proprietary (not open-source) platform by LangChain for debugging, testing, evaluating, and monitoring LLM applications. Offers tracing, human feedback collection, and dataset management. |
+| **Langfuse** | "Open-source LLMOps alternative" | An actively maintained open-source platform for LLM observability — tracing, prompt management, evaluation, and monitoring. A modern alternative to proprietary LLMOps tools. |
 
 ---
 
@@ -503,6 +509,64 @@ Eden recommends the [LangChain Academy](https://academy.langchain.com/) — free
 
 ---
 
+## What's Next — LLMOps & Continuous Learning
+
+In the course finale (Chapter 84), Eden recaps the two core patterns taught — **Agents** (non-deterministic reasoning) and **RAG** (vector stores + semantic search) — and introduces the operational challenges of maintaining LLM applications in production.
+
+### The Four Pillars of LLMOps
+
+LLMOps (LLM Operations) is the emerging discipline of operationalizing LLM applications, analogous to DevOps for infrastructure or MLOps for traditional ML.
+
+| Pillar | What It Covers | Why It Matters |
+|--------|---------------|----------------|
+| **Prompt Management** | Versioning, testing, and maintaining prompts across model changes | A prompt optimized for GPT-4 may break on GPT-4o-mini or a new model version |
+| **Monitoring** | Latency, cost per request, token usage, error rates | You need to know how fast responses are, what each request costs, and how much you're paying vendors |
+| **Debugging** | Understanding why the LLM returned an incorrect or unexpected response | Especially challenging with agents — multi-step reasoning makes it hard to pinpoint where things went wrong |
+| **Evaluation** | Automated assessment of LLM response quality | Manual evaluation doesn't scale — you need automated tools to assess correctness, relevance, and safety |
+
+### C#/Java Analogy
+
+Think of LLMOps as the AI equivalent of your existing operational stack:
+
+| Traditional Ops | LLMOps Equivalent |
+|----------------|--------------------|
+| Application Insights / Datadog | LangSmith tracing / Langfuse |
+| CI/CD pipeline tests | LLM evaluation suites |
+| Feature flags / config management | Prompt versioning and A/B testing |
+| APM dashboards | Token usage and cost monitoring |
+
+### Tooling Landscape
+
+| Tool | Type | What It Does | Status |
+|------|------|-------------|--------|
+| **[LangSmith](https://smith.langchain.com/)** | Proprietary (free tier) | Debugging, testing, evaluating, monitoring — the most comprehensive LLMOps platform | ✅ Actively maintained, production-ready |
+| **[Langfuse](https://langfuse.com/)** | Open source | Tracing, prompt management, evaluation, monitoring | ✅ Actively maintained, widely adopted |
+| **[Phoenix (Arize)](https://phoenix.arize.com/)** | Open source | LLM observability, tracing, evaluation | ✅ Actively maintained |
+| **~~Pezzo~~** | Open source | Prompt management, tracing | ⚠️ **Project archived/inactive** — Eden recommended it in the course, but it is no longer maintained |
+
+> ⚠️ **Transcript correction:** Eden recommends Pezzo as an open-source alternative to LangSmith. However, the Pezzo project ([github.com/pezzolabs/pezzo](https://github.com/pezzolabs/pezzo)) is now archived and no longer maintained. **[Langfuse](https://langfuse.com/)** is the actively maintained open-source alternative that fills the same role.
+
+### LLM Security Recap
+
+Eden emphasizes that deploying locally vs deploying to production are fundamentally different security postures:
+
+| Concern | Details |
+|---------|---------|
+| **New attack vectors** | LLMs introduce prompt injection, data exfiltration via tool access, and indirect prompt injection through retrieved documents |
+| **LangChain's response** | Unsafe/unstable code was moved to `langchain-experimental` — separating production-safe code from experimental features |
+| **Eden's background note** | *"Maybe I'm just mentioning it because I come from a security background, but I think it's important to know and to explore."* |
+
+### Staying Current — Recommended Resources
+
+| Resource | Why |
+|------------|-----|
+| **[LangChain Blog](https://blog.langchain.dev/)** | Weekly posts on new patterns, implementations, and gen AI developments |
+| **Twitter/X** | Real-time stream of research papers, new tools, use cases, and community discussions |
+| **[LangChain Academy](https://academy.langchain.com/)** | Free official courses (LangSmith, LangGraph, LangChain foundations) |
+| **This repo** | Your own notes — keep building on it as the field evolves |
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What are the main challenges of deploying LLM agents in production?**
@@ -561,6 +625,18 @@ Eden recommends the [LangChain Academy](https://academy.langchain.com/) — free
 
 > **A:** Standard RAG retrieves relevant documents to ground LLM answers. RAG for tool selection retrieves relevant *tools* before the LLM makes a tool-selection decision. When an agent has many tools, sending all tool definitions in the prompt is expensive and can confuse the model. By doing a semantic search first to find the most relevant tools, you reduce the decision space, improving both accuracy and token efficiency.
 
+**Q: What is LLMOps and what are its four pillars?**
+
+> **A:** LLMOps (LLM Operations) is the emerging discipline of operationalizing LLM applications in production. The four pillars are: (1) Prompt management — versioning and testing prompts across model changes. (2) Monitoring — tracking latency, cost, token usage, and error rates. (3) Debugging — understanding why the LLM returned incorrect responses, especially in multi-step agent loops. (4) Evaluation — automated quality assessment of LLM outputs, because manual evaluation doesn't scale.
+
+**Q: Why is prompt management a distinct concern in LLMOps?**
+
+> **A:** Prompts are fragile across model changes — a prompt optimized for GPT-4 may degrade on GPT-4o-mini or when the vendor updates the model. Prompt management involves versioning prompts, testing them against model changes, and A/B testing variants. Without it, a model upgrade can silently break your application's output quality. It's analogous to configuration management in traditional DevOps.
+
+**Q: What open-source LLMOps tools are available as alternatives to LangSmith?**
+
+> **A:** The most actively maintained open-source alternative is Langfuse, which provides tracing, prompt management, evaluation, and monitoring. Phoenix by Arize is another strong option for LLM observability. Eden originally recommended Pezzo in the course, but that project is now archived. LangSmith remains the most comprehensive option but is proprietary (with a free tier).
+
 ---
 
 ## References
@@ -574,3 +650,7 @@ Eden recommends the [LangChain Academy](https://academy.langchain.com/) — free
 - [The Hidden Metric That Determines AI Product Success (Elovic & Chase)](https://www.langchain.com/blog/the-hidden-metric-that-determines-ai-product-success)
 - [LangChain Academy — Free Official Courses](https://academy.langchain.com/)
 - [Andrej Karpathy's FOMO Blog Post (2025)](https://x.com/karpathy)
+- [Langfuse — Open Source LLMOps](https://langfuse.com/)
+- [Phoenix by Arize — LLM Observability](https://phoenix.arize.com/)
+- [LangSmith — LLMOps Platform](https://smith.langchain.com/)
+- [LangChain Blog](https://blog.langchain.dev/)
