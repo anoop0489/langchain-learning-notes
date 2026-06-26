@@ -10,18 +10,19 @@ A comprehensive guide to what LLMs actually are, the formal structure of prompts
 
 | # | Section | What You'll Learn |
 |---|---------|-------------------|
-| 1 | [Key Definitions](#key-definitions-interview-ready) | 20+ terms covering LLMs, prompting techniques, and context engineering |
+| 1 | [Key Definitions](#key-definitions-interview-ready) | 30+ terms covering LLMs, internals, prompting techniques, and context engineering |
 | 2 | [The Foundation: What is a Language Model?](#the-foundation-what-is-a-language-model) | Probability distributions, next-word prediction, what makes an LLM "large" |
-| 3 | [The Anatomy of a Prompt](#the-anatomy-of-a-prompt) | Four components: instruction, context, input data, output indicator |
-| 4 | [Zero-Shot Prompting](#deep-dive-zero-shot-prompting) | No examples, relying on pre-trained knowledge, limitations |
-| 5 | [Few-Shot Prompting](#deep-dive-few-shot-prompting) | One-shot vs few-shot, guiding the model with examples, Blue Willow demo |
-| 6 | [Chain of Thought Prompting](#deep-dive-chain-of-thought-prompting) | Breaking multi-step reasoning into intermediate steps, zero-shot vs few-shot CoT |
-| 7 | [ReAct Prompting](#deep-dive-react-prompting) | Reasoning + Acting, external tool integration, the basis for LangChain |
-| 8 | [Prompt Engineering Best Practices](#prompt-engineering-best-practices) | Context, clear tasks, specificity, iteration loops |
-| 9 | [Context Engineering](#deep-dive-context-engineering) | Evolution from static prompts, context poisoning/confusion/clash, agent challenges |
-| 10 | [Context Engineering a System Prompt](#deep-dive-context-engineering-a-system-prompt) | The Goldilocks zone, too specific vs too vague, the ideal system prompt |
-| 11 | [Comparison: All Prompting Techniques](#comparison-all-prompting-techniques) | Side-by-side matrix of every technique covered |
-| 12 | [Interview Q&A](#interview-qa-anchors) | 15+ questions with production-grade answers |
+| 3 | [LLM Internals: Tokenization, Generation & Inference](#deep-dive-llm-internals--tokenization-generation--inference) | Tokenization (BPE, tiktoken), autoregressive generation, temperature, top_p, sampling strategies |
+| 4 | [The Anatomy of a Prompt](#the-anatomy-of-a-prompt) | Four components: instruction, context, input data, output indicator |
+| 5 | [Zero-Shot Prompting](#deep-dive-zero-shot-prompting) | No examples, relying on pre-trained knowledge, limitations |
+| 6 | [Few-Shot Prompting](#deep-dive-few-shot-prompting) | One-shot vs few-shot, guiding the model with examples, Blue Willow demo |
+| 7 | [Chain of Thought Prompting](#deep-dive-chain-of-thought-prompting) | Breaking multi-step reasoning into intermediate steps, zero-shot vs few-shot CoT |
+| 8 | [ReAct Prompting](#deep-dive-react-prompting) | Reasoning + Acting, external tool integration, the basis for LangChain |
+| 9 | [Prompt Engineering Best Practices](#prompt-engineering-best-practices) | Context, clear tasks, specificity, iteration loops |
+| 10 | [Context Engineering](#deep-dive-context-engineering) | Evolution from static prompts, context poisoning/confusion/clash, agent challenges |
+| 11 | [Context Engineering a System Prompt](#deep-dive-context-engineering-a-system-prompt) | The Goldilocks zone, too specific vs too vague, the ideal system prompt |
+| 12 | [Comparison: All Prompting Techniques](#comparison-all-prompting-techniques) | Side-by-side matrix of every technique covered |
+| 13 | [Interview Q&A](#interview-qa-anchors) | 20+ questions with production-grade answers |
 
 ---
 
@@ -63,6 +64,20 @@ Use these as your opening sentence when asked "What is X?" in an interview:
 | **Context Clash** | "Contradictory information in the context" | When different parts of the context contradict each other, forcing the model to choose between conflicting information — often incorrectly. |
 | **System Prompt** | "The foundational instruction set for the model" | The initial prompt that establishes the model's identity, behavior boundaries, reasoning framework, and response style. Persists across all user interactions in a session. |
 | **Goldilocks Zone** | "Not too vague, not too specific — just right" | Anthropic's term for the ideal system prompt specificity: clear enough for consistent behavior, flexible enough for the LLM to apply judgment to novel situations. |
+| **Token** | "The atomic unit LLMs process" | Not a word — a subword unit produced by the tokenizer. Common words may be one token; rare words are split into multiple tokens. Rule of thumb: 1 token ≈ 4 characters in English, or ≈ 0.75 words. |
+| **Tokenization** | "Splitting text into tokens for the model" | The process of converting raw text into a sequence of integer token IDs that the model can process. Modern LLMs use subword tokenization (BPE) — splitting text into common subword fragments rather than whole words. |
+| **BPE (Byte-Pair Encoding)** | "The algorithm behind modern tokenization" | A compression-based tokenization algorithm that iteratively merges the most frequent pairs of bytes/characters into single tokens, building a vocabulary of common subword units. Used by GPT, Claude, and most modern LLMs. |
+| **tiktoken** | "OpenAI's fast tokenizer library" | OpenAI's open-source Python library for counting and encoding tokens for their models. Essential for estimating costs, checking context window limits, and building token-aware chunking strategies. |
+| **Autoregressive Generation** | "Generate one token at a time, left to right" | The fundamental generation mechanism of decoder-only LLMs: predict the next token, append it to the sequence, and repeat. Each new token is conditioned on ALL previous tokens (including the ones just generated). |
+| **Temperature** | "Controls randomness in token selection" | A parameter (0.0–2.0) that scales the probability distribution before sampling. Temperature=0 → deterministic (always pick highest probability). Temperature=1 → sample from natural distribution. Temperature>1 → more random/creative. |
+| **Top-p (Nucleus Sampling)** | "Sample from the smallest set summing to p" | A sampling strategy that considers only the smallest set of tokens whose cumulative probability exceeds p (e.g., 0.9). Dynamically adjusts the candidate set size — fewer candidates for confident predictions, more for uncertain ones. |
+| **Top-k Sampling** | "Sample from the k most likely tokens" | A simpler sampling strategy that considers only the top k most probable tokens. Fixed candidate set regardless of confidence — less adaptive than top-p but computationally cheaper. |
+| **Greedy Decoding** | "Always pick the highest probability token" | The simplest decoding strategy — equivalent to temperature=0. Always selects the single most probable next token. Deterministic but often produces repetitive, "safe" text. |
+| **Frequency Penalty** | "Penalize tokens that already appeared" | A parameter (0.0–2.0) that reduces the probability of tokens proportional to how many times they've already appeared in the output. Prevents repetitive text. |
+| **Presence Penalty** | "Penalize tokens that appeared at all" | A parameter (0.0–2.0) that applies a flat penalty to any token that has appeared at least once, regardless of frequency. Encourages topic diversity. |
+| **max_tokens** | "Hard cap on output length" | The maximum number of tokens the model will generate in a single response. If reached, output is cut off (finish_reason = "length"). Critical for cost control in production. |
+| **Transformer** | "The architecture behind all modern LLMs" | A neural network architecture based on self-attention mechanisms that processes all tokens in parallel (during training) and captures long-range dependencies. Introduced in "Attention Is All You Need" (2017). |
+| **Self-Attention** | "Every token attends to every other token" | The core mechanism of transformers — each token computes relevance scores against all other tokens in the sequence, allowing the model to capture relationships regardless of distance. |
 
 ---
 
@@ -122,6 +137,273 @@ Because LLMs are fundamentally **probability machines** — they guess the most 
 
 ### C#/Java Analogy
 Think of the LLM as a giant **dictionary lookup** crossed with a **pattern matcher**. It's like having a `Dictionary<string[], ProbabilityDistribution>` where the key is every possible word sequence and the value is the probability of each next word. The "training" is populating this dictionary from billions of web pages. The "inference" is doing a lookup and returning `distribution.Max()`.
+
+---
+
+## Deep Dive: LLM Internals — Tokenization, Generation & Inference
+
+Eden's course covers what an LLM *does* (predicts next tokens), but doesn't go deep into *how* it does it. These internals are among the most frequently asked interview topics for AI engineering roles.
+
+### Tokenization — How Text Becomes Numbers
+
+LLMs don't process text directly. They process **tokens** — integer IDs that represent subword fragments.
+
+#### The Pipeline
+
+```
+Raw Text → Tokenizer → Token IDs → Model → Token ID → Detokenizer → Text
+"Hello world"  →  [15496, 995]  →  LLM  →  [0]  →  "!"
+```
+
+#### BPE (Byte-Pair Encoding) — How It Works
+
+Most modern LLMs (GPT, Claude, Llama) use **Byte-Pair Encoding**:
+
+1. Start with individual characters/bytes as the initial vocabulary
+2. Count the most frequent adjacent pair in the training corpus
+3. Merge that pair into a single new token
+4. Repeat steps 2–3 until the vocabulary reaches the target size (e.g., 100K tokens)
+
+**Result:** Common words become single tokens; rare words are split into subword pieces.
+
+| Text | Tokens | Token Count | Why |
+|------|--------|-------------|-----|
+| `"Hello"` | `["Hello"]` | 1 | Very common word — merged into one token |
+| `"tokenization"` | `["token", "ization"]` | 2 | Split at a common morpheme boundary |
+| `"LangChain"` | `["Lang", "Chain"]` | 2 | Camel-cased compound word |
+| `"xyzzy123"` | `["x", "yz", "zy", "123"]` | 4 | Rare string — broken into small pieces |
+
+#### Token Math — The Rule of Thumb
+
+| Language | Rule of Thumb |
+|----------|---------------|
+| English | **1 token ≈ 4 characters** or **1 token ≈ 0.75 words** |
+| Code | Usually more tokens per character (special chars, indentation) |
+| Non-Latin scripts | Significantly more tokens per character (Chinese, Arabic, etc.) |
+
+#### tiktoken — Counting Tokens in Practice
+
+```python
+import tiktoken
+
+# Get the tokenizer for a specific model
+enc = tiktoken.encoding_for_model("gpt-4o")
+
+text = "LangChain makes building LLM applications easy."
+tokens = enc.encode(text)
+
+print(f"Text: {text}")
+print(f"Tokens: {tokens}")        # [31988, 26264, 3727, 4857, ...]
+print(f"Token count: {len(tokens)}")  # 7
+print(f"Characters: {len(text)}")     # 48
+print(f"Ratio: {len(text)/len(tokens):.1f} chars/token")  # ~6.9
+```
+
+> **Why this matters in production:** Token count determines (1) whether you fit in the context window, (2) how much you pay per API call, and (3) how to build token-aware text splitters for RAG (Section 9).
+
+#### C#/Java Analogy
+
+Tokenization is like **URL encoding** — you can't send raw Unicode over HTTP, so you convert it to a safe representation (`%20` for space). Similarly, you can't send raw text to an LLM — you convert it to token IDs the model was trained on. The tokenizer is the `Encoding.UTF8.GetBytes()` equivalent for LLMs.
+
+---
+
+### Autoregressive Generation — The Generation Loop
+
+LLMs generate text **one token at a time**, left to right. This is called **autoregressive generation**:
+
+```
+Input:   "The capital of France is"
+Step 1:  Model predicts → "Paris"     (append to sequence)
+Step 2:  Model predicts → "."         (append to sequence)  
+Step 3:  Model predicts → <EOS>       (stop generating)
+
+Output:  "The capital of France is Paris."
+```
+
+Each step is a **full forward pass** through the entire model. The model sees ALL tokens generated so far (including its own previous outputs) when predicting the next one.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              AUTOREGRESSIVE GENERATION LOOP                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [Prompt tokens] → Model → P(next token | all previous)     │
+│                              ↓                               │
+│                    Sample one token from distribution         │
+│                              ↓                               │
+│                    Append to sequence                         │
+│                              ↓                               │
+│                    Is it <EOS> or max_tokens reached?         │
+│                       Yes → Stop    No → Loop back ↑         │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+> **Key insight:** This is why LLMs are slow for long outputs — each token requires a full model forward pass. A 500-token response requires 500 sequential passes. This is also why streaming (`.stream()`) is important for UX — you can show tokens as they're generated rather than waiting for the complete response.
+
+#### C#/Java Analogy
+
+Autoregressive generation is like a `StringBuilder` in a `while` loop:
+
+```csharp
+var sb = new StringBuilder(prompt);
+while (true)
+{
+    var nextToken = model.PredictNext(sb.ToString());  // Full model pass
+    if (nextToken == EOS || sb.Length > maxTokens) break;
+    sb.Append(nextToken);  // Append and loop
+}
+return sb.ToString();
+```
+
+---
+
+### Inference Parameters — Controlling the Output
+
+When the model produces a probability distribution over the next token, **inference parameters** control how we select from that distribution.
+
+#### Temperature
+
+Scales the logits (raw scores) before applying softmax to create probabilities:
+
+```
+With temperature:
+  P(token) = softmax(logits / temperature)
+```
+
+| Temperature | Effect | Use Case |
+|-------------|--------|----------|
+| **0.0** | Deterministic — always picks the highest probability token (greedy) | Factual Q&A, code generation, structured output |
+| **0.3–0.7** | Balanced — mostly picks high-probability tokens with some variety | General conversation, summarization |
+| **1.0** | Natural distribution — samples as the model was trained | Creative writing, brainstorming |
+| **1.5–2.0** | Very random — even low-probability tokens have a chance | Extreme creativity, often produces nonsense |
+
+```python
+from langchain_openai import ChatOpenAI
+
+# Deterministic — same input always gives same output
+llm_factual = ChatOpenAI(temperature=0, model="gpt-4o")
+
+# Creative — varied outputs each time
+llm_creative = ChatOpenAI(temperature=0.9, model="gpt-4o")
+```
+
+#### Top-p (Nucleus Sampling)
+
+Instead of considering ALL tokens, only consider the smallest set whose cumulative probability ≥ p:
+
+```
+Example: top_p = 0.9
+
+  Token:    "Paris"   "."    "Lyon"   "the"   "Berlin"   ...
+  Prob:      0.70    0.12    0.08     0.05     0.03      ...
+  Cumulative: 0.70    0.82    0.90     ← STOP HERE
+
+  Only "Paris", ".", and "Lyon" are candidates for sampling.
+```
+
+| Parameter | What It Controls | Key Difference |
+|-----------|-----------------|----------------|
+| **Temperature** | The *shape* of the distribution (sharper or flatter) | Affects ALL tokens equally |
+| **Top-p** | The *size* of the candidate set (dynamic cutoff) | Adapts to model confidence — fewer candidates when confident |
+
+> **Interview tip:** When asked "temperature vs top_p" — temperature reshapes the entire distribution uniformly; top_p dynamically limits the candidate pool based on cumulative probability. They can be used together but usually you adjust one and leave the other at default.
+
+#### Other Inference Parameters
+
+| Parameter | Range | What It Does | When to Use |
+|-----------|-------|-------------|-------------|
+| **max_tokens** | 1–model limit | Hard cap on output length | Always set in production (cost control) |
+| **frequency_penalty** | 0.0–2.0 | Reduces probability proportional to token occurrence count | Prevent word/phrase repetition |
+| **presence_penalty** | 0.0–2.0 | Flat penalty for any token that appeared at least once | Encourage topic diversity |
+| **stop** | List of strings | Stop generation when any string is produced | Structured output parsing, custom delimiters |
+| **seed** | Integer | Attempt reproducible outputs (best-effort) | Testing, debugging, evaluation |
+
+```python
+from langchain_openai import ChatOpenAI
+
+# Production config: deterministic, cost-controlled, no repetition
+llm = ChatOpenAI(
+    model="gpt-4o",
+    temperature=0,
+    max_tokens=1000,          # Never spend more than 1000 output tokens
+    frequency_penalty=0.3,    # Reduce repetition
+    seed=42                   # Reproducible for testing
+)
+```
+
+---
+
+### Sampling Strategies — How the Next Token is Picked
+
+Once we have the probability distribution (after temperature/top-p are applied), we need to actually **pick** a token:
+
+| Strategy | How It Works | Pros | Cons |
+|----------|-------------|------|------|
+| **Greedy Decoding** | Always pick the highest probability token | Deterministic, fast | Repetitive, boring, misses better sequences |
+| **Random Sampling** | Sample from the full distribution | Creative, diverse | Can produce nonsense (low-probability tokens) |
+| **Top-k Sampling** | Sample from only the top k tokens | Limits randomness | Fixed k doesn't adapt to confidence |
+| **Nucleus (Top-p)** | Sample from the smallest set summing to p | Adaptive — fewer candidates when confident, more when uncertain | Slightly more complex |
+| **Beam Search** | Track top N sequences in parallel | Finds globally better sequences | Expensive, not used in real-time chat |
+
+> **What OpenAI/Anthropic APIs actually use:** Nucleus sampling (top-p) with temperature scaling. You don't choose the strategy — you control it via `temperature` and `top_p` parameters. Greedy decoding is achieved by setting `temperature=0`.
+
+---
+
+### The Transformer Architecture (High-Level)
+
+You don't need to implement a transformer, but you need to understand what's inside the black box at a conceptual level:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                  TRANSFORMER (Decoder-Only)              │
+├────────────────────────────────────────────────────────┤
+│                                                         │
+│  Input: Token IDs → Embedding Layer → Vectors           │
+│                          ↓                              │
+│         ┌─────────────────────────────────┐             │
+│         │     Self-Attention Layer         │ × N layers  │
+│         │  (every token attends to every   │             │
+│         │   previous token)                │             │
+│         ├─────────────────────────────────┤             │
+│         │     Feed-Forward Network         │             │
+│         └─────────────────────────────────┘             │
+│                          ↓                              │
+│  Output: Probability distribution over vocabulary       │
+│                                                         │
+└────────────────────────────────────────────────────────┘
+```
+
+| Component | What It Does | C# Analogy |
+|-----------|-------------|-------------|
+| **Embedding Layer** | Converts token IDs → dense vectors (e.g., 4096 dimensions) | `Dictionary<int, float[]>` lookup |
+| **Self-Attention** | Each token computes relevance scores against all previous tokens | A `foreach` loop where each item calculates its relationship to every prior item via dot product |
+| **Feed-Forward Network** | Processes each token's representation independently | A `Select()` / `.map()` transform on each element |
+| **Stacking (N layers)** | Repeating attention + FFN builds deeper understanding | Like middleware pipeline — each layer refines the representation |
+| **Output Head** | Projects final representations to vocabulary-sized logits | `model.Score()` → probability per token in vocabulary |
+
+**Key facts for interviews:**
+- GPT-4 is a **decoder-only** transformer (no encoder)
+- Training is parallelized (all tokens processed simultaneously); inference is sequential (one token at a time)
+- Self-attention has O(n²) complexity with sequence length — this is why context windows have limits
+- The "attention" mechanism is what allows the model to connect distant tokens (e.g., a pronoun to its referent paragraphs earlier)
+
+---
+
+### Putting It All Together — From Prompt to Response
+
+```
+1. Your prompt text    →  "What is the capital of France?"
+2. Tokenization        →  [3923, 374, 279, 6864, 315, 9822, 30]
+3. Embedding           →  7 vectors of dimension 4096
+4. Transformer layers  →  Contextualized representations
+5. Output head         →  Probability distribution over 100K tokens
+6. Sampling (temp/p)   →  Token ID 12366 selected
+7. Detokenization      →  "Paris"
+8. Repeat from step 3  →  Until <EOS> or max_tokens
+```
+
+> **Why this matters for your work:** Understanding this pipeline explains (1) why costs are per-token, (2) why context windows are limited, (3) why temperature=0 gives deterministic output, (4) why streaming works token-by-token, and (5) why the same prompt can give different answers (sampling randomness).
 
 ---
 
@@ -771,10 +1053,33 @@ Zero-Shot ──► Few-Shot ──► Chain of Thought ──► ReAct
 
 > **A:** Because the quality of an LLM's output is directly proportional to the quality of its context. A powerful model with bad context will produce bad results; a modest model with excellent context can outperform it. This is why context engineering — ensuring the right information reaches the model — is more impactful than model selection for most production applications.
 
+**Q: What is tokenization and why does it matter for LLM applications?**
+
+> **A:** Tokenization splits text into subword units (tokens) using algorithms like BPE. It matters because: (1) you pay per token, so token count = cost; (2) context windows are measured in tokens, not characters; (3) token-aware chunking in RAG prevents splitting mid-word. Rule of thumb: 1 token ≈ 4 English characters or 0.75 words. Use `tiktoken` to count tokens for OpenAI models.
+
+**Q: What is autoregressive generation?**
+
+> **A:** The mechanism by which decoder-only LLMs (GPT, Claude, Llama) generate text — one token at a time, left to right. Each token prediction requires a full forward pass through the model, conditioned on ALL previous tokens including the model's own prior outputs. This is why generation is sequential (slow for long outputs) and why streaming shows tokens incrementally.
+
+**Q: What is the difference between temperature and top_p?**
+
+> **A:** Temperature reshapes the entire probability distribution uniformly — lower = sharper (more deterministic), higher = flatter (more random). Top-p (nucleus sampling) dynamically limits the candidate pool by only considering the smallest set of tokens whose probabilities sum to p. Temperature affects the distribution shape; top-p affects the candidate set size. They can be combined, but typically you tune one and leave the other at default.
+
+**Q: When should you use temperature=0 vs a higher temperature?**
+
+> **A:** Temperature=0 (greedy decoding) for factual Q&A, code generation, structured output, and any task where consistency and correctness matter more than creativity. Higher temperatures (0.7–1.0) for creative writing, brainstorming, and generating diverse alternatives. In production agent systems, temperature=0 is almost always preferred because you want predictable, reproducible tool selection.
+
+**Q: What is the Transformer architecture at a high level?**
+
+> **A:** A neural network architecture based on self-attention — each token computes relevance scores against all other tokens, capturing long-range dependencies. Modern LLMs (GPT-4, Claude) are decoder-only transformers: they stack multiple self-attention + feed-forward layers. Training is parallelized (all tokens at once); inference is sequential (one token at a time). Self-attention has O(n²) complexity with sequence length, which is why context windows have hard limits.
+
 ---
 
 ## References
 
+- [Attention Is All You Need (Vaswani et al., 2017)](https://arxiv.org/abs/1706.03762)
+- [tiktoken — OpenAI's Tokenizer Library](https://github.com/openai/tiktoken)
+- [OpenAI Tokenizer (Interactive)](https://platform.openai.com/tokenizer)
 - [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models (Wei et al., 2022)](https://arxiv.org/abs/2201.11903)
 - [ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., 2022)](https://arxiv.org/abs/2210.03629)
 - [Context Engineering for Agents (LangChain Blog)](https://www.langchain.com/blog/context-engineering-for-agents)
