@@ -7,6 +7,7 @@
 ## 🎯 What You Will Learn
 * The architectural shift from Completion Models to Chat Models.
 * The "Chat Markup Language" (System, Human, AI Roles).
+* **Message anatomy** — content types (text, image, audio), metadata (usage, response), and the full type hierarchy.
 * How to handle the inherently stateless nature of LLM APIs.
 * Raw message construction vs. PromptTemplates.
 
@@ -44,7 +45,89 @@ Modern models (GPT-4, Claude, Gemini) are trained on structured dialogue, not ju
 | **Human** | `HumanMessage` | The user's input. | In production, strictly separate this from System instructions to prevent "Prompt Injection." |
 | **AI** | `AIMessage` | The model's output. | Used to feed conversation history back into the model so it remembers the context. |
 
-### B. "Stateless" Architecture
+### B. Message Anatomy — The Three Layers
+
+Every LangChain message (inheriting from `BaseMessage`) is more than just text. Each message is a structured object with three layers:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    BaseMessage                            │
+├─────────────────────────────────────────────────────────┤
+│  1. ROLE         │  type field (system/human/ai/tool)    │
+│  2. CONTENT      │  str OR List[content blocks]          │
+│  3. METADATA     │  response_metadata, usage_metadata,   │
+│                  │  id, tool_calls, etc.                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Layer 1: Role (Type)
+
+Already covered above — `system`, `human`, `ai`, `tool`.
+
+#### Layer 2: Content — Text vs. Multimodal Blocks
+
+The `content` field can be **either** a plain string **or** a list of typed content blocks for multimodal input:
+
+| Content Type | Block Format | Used For |
+|-------------|-------------|----------|
+| **Text** | `{"type": "text", "text": "..."}` | Standard text input/output |
+| **Image URL** | `{"type": "image_url", "image_url": {"url": "..."}}` | Sending images to vision models (GPT-4o, Claude) |
+| **Image (base64)** | `{"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}` | Inline image data without external URL |
+| **Audio** | `{"type": "input_audio", "input_audio": {"data": "...", "format": "wav"}}` | Audio input for speech models |
+| **Tool Use** | Returned in `AIMessage.tool_calls` | When the model requests tool execution |
+
+```python
+from langchain_core.messages import HumanMessage
+
+# Simple text content (string shorthand)
+msg_text = HumanMessage(content="What is this image?")
+
+# Multimodal content (list of blocks)
+msg_multimodal = HumanMessage(content=[
+    {"type": "text", "text": "What's in this image?"},
+    {"type": "image_url", "image_url": {"url": "https://example.com/photo.png"}}
+])
+```
+
+> **C# Analogy:** Think of `content` as a discriminated union / `OneOf<string, List<ContentBlock>>`. In C# terms, it's like having a property that can be `string` for simple cases or `List<ChatMessageContent>` for multimodal, similar to the Semantic Kernel's `ChatMessageContentItemCollection`.
+
+#### Layer 3: Metadata
+
+`AIMessage` objects returned by the model carry rich metadata:
+
+| Property | What It Contains | Why It Matters |
+|----------|-----------------|---------------|
+| `response_metadata` | Model name, finish reason, system fingerprint | Debugging which model/version produced a response |
+| `usage_metadata` | `input_tokens`, `output_tokens`, `total_tokens` | **Cost tracking** — calculate spend per request |
+| `id` | Unique message identifier (e.g., `run-abc123`) | Correlation in logging and tracing (LangSmith) |
+| `tool_calls` | List of tool call requests `[{name, args, id}]` | Agents — the model is requesting tool execution |
+| `additional_kwargs` | Vendor-specific fields (refusal, logprobs, etc.) | Advanced use cases |
+
+```python
+response = llm.invoke([HumanMessage(content="Hello")])
+
+print(response.content)              # "Hi there!"
+print(response.usage_metadata)       # {'input_tokens': 8, 'output_tokens': 12, 'total_tokens': 20}
+print(response.response_metadata)    # {'model_name': 'gpt-4o', 'finish_reason': 'stop', ...}
+print(response.id)                   # 'run-abc123-...'
+print(response.tool_calls)           # [] (empty if no tools requested)
+```
+
+> **Production tip:** Always log `usage_metadata` in production to track costs. At scale, this is how you build token usage dashboards and catch runaway agent loops that burn through your budget.
+
+#### The Complete Message Type Hierarchy
+
+| Class | Role | Has `tool_calls`? | Has `usage_metadata`? | Typical Use |
+|-------|------|-------------------|----------------------|-------------|
+| `SystemMessage` | system | ❌ | ❌ | Set behavior, persona, guardrails |
+| `HumanMessage` | human | ❌ | ❌ | User input (text, images, audio) |
+| `AIMessage` | ai | ✅ | ✅ | Model output, tool requests |
+| `ToolMessage` | tool | ❌ | ❌ | Return tool execution results to the model |
+| `RemoveMessage` | — | ❌ | ❌ | Signal to delete a message from state (LangGraph) |
+
+---
+
+### C. "Stateless" Architecture
 
 A critical concept for interviews: **LLMs are stateless.**
 
@@ -52,7 +135,7 @@ A critical concept for interviews: **LLMs are stateless.**
 * When you send the second question ("How do I handle missing values?"), the model has already forgotten the first question.
 * **Solution:** You must re-send the **entire chain** of messages (System + Human + AI + Human) every single time you call `.invoke()`. This is why the `messages` list in the code below is so important.
 
-### C. `LLM` vs. `ChatModel` in LangChain
+### D. `LLM` vs. `ChatModel` in LangChain
 
 LangChain has two distinct class types:
 
@@ -140,5 +223,11 @@ print(f"Content: {response.content}")
 
 **Q: If I use `ChatOpenAI`, does it remember my previous messages automatically?**
 > **A:** No. The model is stateless. The developer (or the LangChain `Memory` module) must manage the list of past messages and re-send the full history with every new request.
+
+**Q: What is the `content` field of a LangChain message — is it always a string?**
+> **A:** No. For simple text, `content` is a plain string. But for multimodal input (images, audio), it becomes a list of typed content blocks — each block has a `type` field (`"text"`, `"image_url"`, `"input_audio"`) and corresponding data. This allows sending mixed content (text + images) in a single `HumanMessage` to vision models like GPT-4o.
+
+**Q: How do you track token usage and cost per request in LangChain?**
+> **A:** Every `AIMessage` returned by the model includes a `usage_metadata` property with `input_tokens`, `output_tokens`, and `total_tokens`. In production, you log this per request to build cost dashboards, detect runaway agent loops, and enforce per-user token budgets. The `response_metadata` also includes the model name and finish reason for debugging.
 
 ---
