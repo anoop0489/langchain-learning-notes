@@ -3,6 +3,7 @@
 *Based on Section 1: LangChain Basics (Lectures 9 - 11)*
 
 > 🚀 **Runnable script:** [src/02_chat_models_architecture.py](src/02_chat_models_architecture.py)
+> 🖼️ **Multimodal demo:** [src/test_multimodal_messages.py](src/test_multimodal_messages.py) — send a PDF page to GPT-4o Vision
 
 ## 🎯 What You Will Learn
 * The architectural shift from Completion Models to Chat Models.
@@ -90,6 +91,22 @@ msg_multimodal = HumanMessage(content=[
 ```
 
 > **C# Analogy:** Think of `content` as a discriminated union / `OneOf<string, List<ContentBlock>>`. In C# terms, it's like having a property that can be `string` for simple cases or `List<ChatMessageContent>` for multimodal, similar to the Semantic Kernel's `ChatMessageContentItemCollection`.
+
+#### ⚡ Direct Vision vs. RAG — When to Use Which
+
+Sending images directly via multimodal content blocks is powerful but expensive. Here's when to choose each approach:
+
+| | Direct Vision (this pattern) | RAG Pipeline (Section 9) |
+|---|---|---|
+| **How it works** | Render page → send image to GPT-4o on every query | Render once → GPT-4o describes → embed → store in vector DB |
+| **Cost per query** | **High** — image tokens billed every call (~1000+ tokens per page at `detail: "high"`) | **Low** — text retrieval + text generation only |
+| **Upfront cost** | Zero | One-time GPT-4o description + embedding pass |
+| **Best for** | Ad-hoc inspection, one-off "what's on this page?", verifying layout/colors | Repeated queries against same documents, production systems |
+| **Scales to** | 1-2 pages at a time | Hundreds/thousands of pages |
+
+> **Rule of thumb:** If you'll ask more than 2-3 questions about the same document, pay the one-time cost to describe and embed it into a vector store. Reserve direct vision for development-time exploration or when you need the model to see exact pixel-level detail.
+>
+> See [09-gist-of-rag/src/test_multimodal_pdf_rag.py](../09-gist-of-rag/src/test_multimodal_pdf_rag.py) for the production RAG approach.
 
 #### Layer 3: Metadata
 
