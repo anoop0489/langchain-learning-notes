@@ -5,13 +5,18 @@ in a single cohesive program — a Travel Assistant that helps plan trips.
 This is NOT a tutorial with sections. It's a real agent you'd build in production,
 with comments pointing out which concept is being used and why.
 
-Run: uv run --python 3.12 --with langchain --with langchain-openai --with langgraph --with python-dotenv --with truststore langgraph_prereq_complete.py
-Requires: langchain langchain-openai langgraph python-dotenv truststore
+Run: uv run python langgraph_prereq_complete.py
+Requires (in pyproject.toml): langchain langchain-openai langgraph python-dotenv truststore
 """
 
 import os
+import sys
 import uuid
 from typing import Annotated, TypedDict
+
+# Fix Windows terminal encoding for emoji/unicode output
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Corporate proxy / SSL fix — must be before any network imports
 import truststore
