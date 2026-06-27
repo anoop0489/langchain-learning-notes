@@ -53,34 +53,118 @@ class UserContext:
 # =====================================================================
 # 3. ADVANCED CONTEXT-AWARE TOOLS (Topic 3, 9, & 14)
 # =====================================================================
+# 3. ADVANCED CONTEXT-AWARE TOOLS (Topic 3, 9, & 14)
+#
+# NORMAL TOOL vs COMMAND TOOL — What's the difference?
+#
+#   NORMAL TOOL (returns str):
+#     @tool
+#     def get_weather(city: str) -> str:
+#         return "72°F sunny"
+#     → The string goes into a ToolMessage → LLM reads it → LLM responds
+#     → Graph state is NOT changed (only messages list gets the ToolMessage)
+#
+#   COMMAND TOOL (returns Command):
+#     @tool
+#     def process_order(item: str, runtime: ToolRuntime) -> Command:
+#         return Command(update={"order_status": "Completed", "messages": [...]})
+#     → The Command WRITES to graph state (sets order_status = "Completed")
+#     → AND adds a ToolMessage so the LLM knows what happened
+#     → This is how a tool can MUTATE your custom state fields
+#
+#   WHY NOT JUST RETURN A STRING?
+#     If process_order returned "Order completed", the LLM would see that text,
+#     but order_status in your state would still be empty/unset. You'd have no
+#     way to track the order programmatically. Command solves this by letting
+#     the tool update state fields directly.
+#
+#   C# ANALOGY:
+#     - Normal tool = Controller action that returns Ok("result")
+#     - Command tool = Controller action that ALSO writes to HttpContext.Items
+#       or dispatches a domain event before returning
+# =====================================================================
 @tool
 def process_premium_order(item: str, runtime: ToolRuntime[UserContext]) -> Command:
     """Process an order for a high-value premium item. Requires manager approval."""
-    # A. Dependency Injection: Pull read-only claims securely from context
-    secure_user = runtime.context.user_id
-    tier = runtime.context.account_type
-    
-    # B. Pull mutable session data out of the short-term State
+
+    # A. Dependency Injection via ToolRuntime:
+    #    runtime.context gives us the UserContext dataclass that was passed
+    #    via context= on app.invoke()/app.stream(). The LLM never sees this —
+    #    it's injected by the framework, like [FromServices] in ASP.NET.
+    secure_user = runtime.context.user_id      # "user_anoop"
+    tier = runtime.context.account_type         # "Premium"
+
+    # B. Read session state via ToolRuntime:
+    #    runtime.state is the current graph state (AgentState dict).
+    #    This lets a tool READ custom fields without them being tool parameters.
     current_lang = runtime.state.get("preferred_language", "English")
-    
+
     # Execute backend ordering logic securely
     confirmation_text = f"Order processed for {item}. User: {secure_user} ({tier} Tier). Lang: {current_lang}"
-    
-    # C. State Mutation: Return a Command to update custom state variables
+
+    # C. Return a Command to WRITE BACK to graph state:
+    #
+    #    Command(update={...}) does TWO things at once:
+    #
+    #    1. MUTATES STATE: Sets order_status = "Completed" in AgentState
+    #       → Without Command, there's no way for a tool to change custom state fields.
+    #       → A normal string return only adds a ToolMessage — it can't touch order_status.
+    #
+    #    2. ADDS TOOLMESSAGE: The messages list gets a ToolMessage so the LLM
+    #       knows the tool succeeded and what it did. The tool_call_id MUST match
+    #       the original tool_call from the AIMessage — this is how LangGraph
+    #       correlates "which tool call produced which result".
+    #
+    #    Think of it as: return value + side effect in one atomic operation.
     return Command(
         update={
-            "order_status": "Completed",
+            "order_status": "Completed",           # ← Mutates AgentState.order_status
             "messages": [
-                ToolMessage(content=confirmation_text, tool_call_id=runtime.tool_call_id)
+                ToolMessage(
+                    content=confirmation_text,
+                    tool_call_id=runtime.tool_call_id  # ← Correlates with the AIMessage's tool_call
+                )
             ]
         }
     )
 
+
+# ---------------------------------------------------------------------------
+# return_direct=True — SHORT-CIRCUIT: Skip the final LLM call
+#
+# NORMAL FLOW (return_direct=False, the default):
+#   User → Agent(LLM) → Tool runs → ToolMessage → Agent(LLM again) → Final answer
+#   The LLM gets to READ the tool result and REPHRASE it for the user.
+#
+# SHORT-CIRCUIT FLOW (return_direct=True):
+#   User → Agent(LLM) → Tool runs → Tool output IS the final answer → END
+#   The LLM does NOT get another turn. The raw tool output goes to the user.
+#
+# WHEN TO USE return_direct=True:
+#   - Database lookups where the result IS the answer (no rephrasing needed)
+#   - Status checks, order tracking, price lookups
+#   - When you want to SAVE an LLM call (faster + cheaper)
+#
+# WHEN NOT TO USE:
+#   - Tool returns raw data that needs summarization
+#   - Tool returns partial info that needs combining with other results
+#   - When the LLM should reason about the result before responding
+#
+# HOW IT WORKS INTERNALLY:
+#   ToolNode checks: does this tool have return_direct=True?
+#   If yes → it sets a flag on the ToolMessage
+#   → The conditional edge sees this flag → routes to END instead of back to agent
+#   → The ToolMessage content becomes the user-facing response
+#
+# C# ANALOGY:
+#   return_direct=True ≈ A middleware that returns a cached response
+#   directly from Redis without ever hitting the controller (LLM).
+# ---------------------------------------------------------------------------
 @tool(return_direct=True)
 def fetch_fast_status(order_id: str) -> str:
     """Fetch an instantaneous status update. Short-circuits the LLM loop."""
-    # Topic 14: Bypasses the final LLM summary step entirely
     return f"Order {order_id} is packing at fulfillment center."
+
 
 # Wrap tools into the prebuilt execution container node
 tool_node = ToolNode([process_premium_order, fetch_fast_status])
