@@ -54,6 +54,11 @@ The theoretical foundations — what LLMs are, how prompting techniques evolved,
 The capstone — production challenges, the LLM landscape, privacy, open-source vs managed, CAIR framework, and AI FOMO.
 * [14. LLM Apps in Production (Challenges, Landscape, Privacy, CAIR, Strategic Decisions)](./12-llm-apps-in-production/14_LLM_Apps_In_Production.md)
 
+### Section 13: LangGraph Fundamentals 🕸️
+*Folder: [`/13-langgraph-fundamentals`](./13-langgraph-fundamentals)*
+LangGraph orchestration runtime — prerequisites, state graphs, persistence, and agentic workflows.
+* [15. LangGraph Prerequisites (Modern LangChain Patterns: ToolRuntime, Command, Middleware, StateGraph, Checkpointers)](./13-langgraph-fundamentals/15_LangGraph_Prerequisites.md)
+
 ---
 
 ## 📖 Reference Guides
