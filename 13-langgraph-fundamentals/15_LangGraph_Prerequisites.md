@@ -989,6 +989,110 @@ config = {
 | `callbacks` | `ILogger` + middleware event hooks |
 | `recursion_limit` | `CancellationToken` with timeout |
 
+### Config vs ToolRuntime — How Are They Different?
+
+This is a common source of confusion. Both carry "configuration" — but they serve **completely different purposes at different layers**.
+
+**Simple analogy:**
+- `config` = the **mailing address** on the envelope (tells the postal system WHERE to deliver)
+- `ToolRuntime` = the **contents inside the envelope** (what the recipient reads and uses)
+
+#### What Each One Is
+
+| | **config (RunnableConfig)** | **ToolRuntime** |
+|---|---|---|
+| **What** | A dict you pass to `.invoke()` / `.stream()` | A parameter auto-injected INTO your tool function |
+| **Who uses it** | The **framework** (LangGraph, checkpointer, LangSmith) | Your **tool code** (business logic inside the tool) |
+| **Who creates it** | **You** (the developer calling the graph) | **LangGraph** (automatically, at tool execution time) |
+| **Visible to LLM?** | No (it's infrastructure) | No (hidden from schema) |
+| **Purpose** | Route, persist, trace, and scope the execution | Give tools access to state, memory, and streaming |
+
+#### When Each One Is Used
+
+```
+YOUR CODE                         LANGGRAPH FRAMEWORK                    YOUR TOOL
+─────────                         ──────────────────                    ─────────
+
+app.invoke(                       Framework reads config:               @tool
+  input,                            → thread_id → load checkpoints     def my_tool(query: str, runtime: ToolRuntime):
+  config={                          → tags → attach to traces              # runtime.state → read messages
+    "configurable": {               → metadata → send to LangSmith         # runtime.store → read/write long-term memory
+      "thread_id": "abc"            → recursion_limit → set max loops      # runtime.context → read user_id, permissions
+    },                                                                     # runtime.config → the SAME config dict!
+    "tags": ["prod"]              Then framework INJECTS ToolRuntime        return f"Results for {query}"
+  }                               into your tool with all the context
+)                                 your tool needs to do its job.
+```
+
+#### The Key Difference in One Sentence
+
+> **Config tells LangGraph HOW to run the graph. ToolRuntime tells your tool WHAT it can access while running.**
+
+#### They're Connected (But Not the Same Thing)
+
+`ToolRuntime` actually **contains** the config inside it (`runtime.config`). The framework reads your config, uses parts of it for routing/persistence, and then packages the relevant context into a `ToolRuntime` object for your tools.
+
+```python
+# You pass config at the TOP level:
+config = {"configurable": {"thread_id": "abc"}, "tags": ["prod"]}
+app.invoke(input, config=config)
+
+# Inside your tool, runtime.config IS that same config:
+@tool
+def my_tool(query: str, runtime: ToolRuntime) -> str:
+    thread = runtime.config["configurable"]["thread_id"]  # "abc"
+    # But you'd typically use the higher-level accessors:
+    thread = runtime.execution_info.thread_id              # "abc" (cleaner)
+    return "..."
+```
+
+#### Comparison Table
+
+| Aspect | config | ToolRuntime |
+|--------|--------|-------------|
+| **Layer** | Caller → Framework | Framework → Tool |
+| **Direction** | You push it IN | LangGraph injects it FOR you |
+| **Contains** | thread_id, tags, metadata, callbacks | state, context, store, stream_writer, config |
+| **Analogy** | HTTP Request Headers | Dependency-injected services in a controller |
+| **Lifetime** | Per `.invoke()` call | Per tool execution |
+| **Without checkpointer** | Still works (tags, metadata flow) | Still works (state, context available) |
+| **Without it** | Graph has no persistence, no traces | Tool can't read state or write to store |
+
+#### C# Analogy (Side by Side)
+
+```csharp
+// CONFIG ≈ What you pass when making an HTTP request
+var request = new HttpRequestMessage {
+    Headers = {
+        { "X-Session-Id", "abc-123" },     // ≈ thread_id
+        { "X-Trace-Tag", "production" }     // ≈ tags
+    }
+};
+
+// TOOLRUNTIME ≈ What your controller receives via DI
+public class WeatherController : ControllerBase
+{
+    // These are INJECTED by the framework, not passed by the caller directly
+    private readonly HttpContext _context;      // ≈ runtime.context
+    private readonly ISession _session;         // ≈ runtime.state
+    private readonly IDistributedCache _cache;  // ≈ runtime.store
+    private readonly IHubContext _hub;          // ≈ runtime.stream_writer
+}
+```
+
+#### When Do You Need Each?
+
+| Scenario | What You Use |
+|----------|--------------|
+| "I want multi-turn memory" | `config` with `thread_id` + checkpointer |
+| "My tool needs to read the current messages" | `ToolRuntime` → `runtime.state["messages"]` |
+| "I want to filter traces in LangSmith" | `config` with `tags` |
+| "My tool needs to save user preferences long-term" | `ToolRuntime` → `runtime.store` |
+| "I want to pause and resume (HIL)" | `config` with same `thread_id` on resume |
+| "My tool needs the user's ID for permissions" | `ToolRuntime` → `runtime.context` |
+| "I want to limit graph loops" | `config` with `recursion_limit` |
+| "My tool needs to stream progress to the UI" | `ToolRuntime` → `runtime.stream_writer` |
+
 ---
 
 ## 12. Conditional Edges & Routing

@@ -325,7 +325,7 @@ def main():
                 print(f"   ✅ Tools returned results")
 
     # --- Turn 2: Follow-up (same thread_id = has full history) ---
-    print("\n\n👤 User: What about hotels? Something mid-range please.")
+    print("\n\n👤 User: What about hotels? Something mid-range, 5 nights.")
     print("-" * 60)
     print("🤖 TravelBot: ", end="", flush=True)
 
