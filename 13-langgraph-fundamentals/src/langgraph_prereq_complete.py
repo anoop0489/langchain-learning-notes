@@ -230,11 +230,68 @@ app = graph.compile(checkpointer=checkpointer)
 # ---------------------------------------------------------------------------
 # RUN THE AGENT: Multi-turn conversation with streaming and time travel.
 # ---------------------------------------------------------------------------
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │                    GRAPH WORKFLOW DIAGRAM                                │
+# │                                                                         │
+# │   ┌───────┐     ┌──────┐     ┌───────┐     ┌─────────────┐            │
+# │   │ START │────▶│ trim │────▶│ agent │────▶│ conditional │            │
+# │   └───────┘     └──────┘     └───────┘     └──────┬──────┘            │
+# │                                                     │                   │
+# │                                        ┌────────────┴────────────┐      │
+# │                                        │                         │      │
+# │                                        ▼                         ▼      │
+# │                                  tool_calls?              no tool_calls  │
+# │                                        │                         │      │
+# │                                        ▼                         ▼      │
+# │                                  ┌───────────┐             ┌─────────┐  │
+# │                                  │   tools   │             │   END   │  │
+# │                                  └─────┬─────┘             └─────────┘  │
+# │                                        │                                │
+# │                                        └──────────▶ back to agent       │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# CODE EXECUTION STEPS (what happens per .stream() call):
+#
+#   Step 1: START → trim node
+#           - Checks if messages > 20, trims if needed
+#           - State checkpoint saved
+#
+#   Step 2: trim → agent node
+#           - Prepends SystemMessage (NOT stored in state)
+#           - Calls LLM with tools bound (llm_with_tools.invoke)
+#           - Returns AIMessage (may contain tool_calls)
+#           - State checkpoint saved
+#
+#   Step 3: agent → conditional edge (should_continue)
+#           - Reads last message from state
+#           - If tool_calls exist → route to "tools"
+#           - If no tool_calls → route to END
+#
+#   Step 4a (if tools): tools node
+#           - ToolNode reads tool_calls from AIMessage
+#           - Executes each tool function by name
+#           - Returns ToolMessage(s) with results + tool_call_id
+#           - State checkpoint saved
+#           - Then → back to Step 2 (agent thinks again with results)
+#
+#   Step 4b (if END): Graph execution complete
+#           - Final AIMessage.content is the answer
+#           - State checkpoint saved (final)
+#           - Control returns to your code
+#
+# ---------------------------------------------------------------------------
 def main():
     # thread_id: YOU generate it. It scopes this conversation's checkpoints.
     # Same thread_id = continue conversation. New thread_id = fresh start.
     thread_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        # Tags let you filter all traces from this session in LangSmith.
+        # Each .stream()/.invoke() is a separate trace, but they share this tag.
+        "tags": [f"session:{thread_id[:8]}"],
+        "metadata": {"script": "langgraph_prereq_complete", "session_id": thread_id},
+    }
 
     print("🌍 TravelBot — Your AI Travel Assistant")
     print(f"   Session: {thread_id[:8]}...")
