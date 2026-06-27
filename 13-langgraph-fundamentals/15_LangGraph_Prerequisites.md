@@ -27,7 +27,10 @@
 | 15 | [create_react_agent / create_agent](#15-create_react_agent--create_agent) | The high-level prebuilt agent factories |
 | 16 | [Graph Compilation & Recursion Limits](#16-graph-compilation--recursion-limits) | What `.compile()` does, preventing infinite loops |
 | 17 | [add_messages Advanced Behavior](#17-add_messages-advanced-behavior) | Deduplication by ID, `RemoveMessage`, message management |
-| 18 | [Interview Q&A Anchors](#18-interview-qa-anchors) | Quick-fire answers for all prerequisites |
+| 18 | [ToolNode — Prebuilt Tool Executor](#18-toolnode--prebuilt-tool-executor) | The prebuilt node that executes tool calls automatically |
+| 19 | [Node Types in a Graph](#19-node-types-in-a-graph) | Model node vs tool node vs custom node — roles and responsibilities |
+| 20 | [with_config & Runnable Binding](#20-with_config--runnable-binding) | Attaching config to runnables, how config flows through graphs |
+| 21 | [Interview Q&A Anchors](#21-interview-qa-anchors) | Quick-fire answers for all prerequisites |
 
 ---
 
@@ -51,6 +54,9 @@
 | **create_react_agent** | Pre-built ReAct agent factory | A convenience function that builds a complete StateGraph with model node, tool node, conditional routing, and the full agent loop — no manual graph wiring needed. |
 | **Annotated** | Python type hint + metadata | Python's way of attaching extra information (like a reducer function) to a type hint. LangGraph uses it to know *how* to update a field. |
 | **recursion_limit** | Max graph cycles before forced stop | Prevents infinite agent loops — the graph stops if it exceeds this many node executions (default: 25). |
+| **ToolNode** | Prebuilt node that executes tool calls | A LangGraph class that reads `tool_calls` from the last `AIMessage`, executes the matching tools, and returns `ToolMessage` objects — handles the entire "execute tools" step in one line. |
+| **with_config** | Bind config to a runnable | Attaches default configuration (tags, metadata, run_name) to any runnable so it flows automatically through the chain without passing it at invocation time. |
+| **Model Node** | The node that calls the LLM | In a graph, the node that invokes the chat model with the current messages and returns an `AIMessage` (potentially with `tool_calls`). |
 
 ---
 
@@ -1560,7 +1566,372 @@ class MyState(TypedDict):
 
 ---
 
-## 18. Interview Q&A Anchors
+## 18. ToolNode — Prebuilt Tool Executor
+
+### The Problem
+
+In the agent loop, after the model returns `tool_calls`, *someone* needs to:
+1. Look up which tool function matches the name
+2. Execute it with the provided arguments
+3. Wrap the result in a `ToolMessage` with the correct `tool_call_id`
+4. Handle errors gracefully
+
+Doing this manually every time is boilerplate. `ToolNode` solves it.
+
+### What Is ToolNode?
+
+`ToolNode` is a **prebuilt LangGraph node** that does all of the above automatically:
+
+```python
+from langgraph.prebuilt import ToolNode
+from langchain.tools import tool
+
+@tool
+def get_weather(city: str) -> str:
+    """Get weather for a city."""
+    return f"Sunny in {city}"
+
+@tool
+def search_docs(query: str) -> str:
+    """Search documentation."""
+    return f"Found docs about {query}"
+
+# Create the node — pass it ALL your tools
+tool_node = ToolNode([get_weather, search_docs])
+```
+
+### How It Works Internally
+
+When `tool_node` is invoked as part of a graph:
+
+```
+1. Reads state["messages"][-1]  → the AIMessage with tool_calls
+2. For EACH tool_call in that message:
+   a. Finds the matching tool by name
+   b. Calls tool.invoke(tool_call)
+   c. Gets back a ToolMessage (content + tool_call_id)
+3. Returns {"messages": [ToolMessage1, ToolMessage2, ...]}
+   ↑ This becomes the state update (appended via add_messages)
+```
+
+### Using ToolNode in a Graph
+
+```python
+from langgraph.graph import StateGraph, MessagesState, START, END
+from langgraph.prebuilt import ToolNode
+from langchain_openai import ChatOpenAI
+
+# Tools
+tools = [get_weather, search_docs]
+
+# Model with tools bound
+model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
+
+# Node functions
+def call_model(state: MessagesState):
+    response = model.invoke(state["messages"])
+    return {"messages": [response]}
+
+# Build graph
+graph = StateGraph(MessagesState)
+graph.add_node("model", call_model)
+graph.add_node("tools", ToolNode(tools))   # ← One line! Handles all tool execution
+
+graph.add_edge(START, "model")
+graph.add_conditional_edges("model", should_continue)
+graph.add_edge("tools", "model")  # After tools execute, go back to model
+
+app = graph.compile()
+```
+
+### ToolNode vs Manual Tool Execution
+
+| Approach | Code | Use When |
+|----------|------|----------|
+| `ToolNode(tools)` | 1 line — handles everything | Standard agent patterns |
+| Manual loop | ~10 lines — custom logic per tool | Need special handling (logging, auth, partial execution) |
+
+### Error Handling in ToolNode
+
+By default, if a tool throws an exception, `ToolNode` catches it and returns an error `ToolMessage`:
+
+```python
+# If get_weather raises ValueError("City not found"):
+# ToolNode returns:
+# ToolMessage(content="Error: City not found", tool_call_id="call_xyz")
+# The model sees this and can try a different approach
+```
+
+### Parallel Tool Execution
+
+When the model returns multiple `tool_calls` in one message, `ToolNode` executes them all and returns all `ToolMessage` results:
+
+```python
+# Model returns: tool_calls = [
+#   {"name": "get_weather", "args": {"city": "Boston"}, "id": "call_1"},
+#   {"name": "get_weather", "args": {"city": "NYC"}, "id": "call_2"},
+# ]
+# ToolNode returns: {"messages": [ToolMessage(..., id="call_1"), ToolMessage(..., id="call_2")]}
+```
+
+### C# Analogy
+
+| ToolNode Concept | C# Equivalent |
+|-----------------|---------------|
+| `ToolNode(tools)` | A `ControllerActivator` / `IServiceProvider.GetService(toolName)` that dispatches by name |
+| Matching tool by name | `IServiceCollection` resolution — register by name, resolve by name |
+| Error handling | Global exception filter returning error DTOs |
+| Parallel execution | `Task.WhenAll(toolCalls.Select(tc => Execute(tc)))` |
+
+---
+
+## 19. Node Types in a Graph
+
+### The Three Node Archetypes
+
+Every LangGraph agent graph has these roles (whether you use prebuilt classes or write them manually):
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Agent Graph                             │
+├────────────────┬────────────────┬────────────────────────┤
+│  MODEL NODE    │  TOOL NODE     │  CUSTOM NODE           │
+│  (Agent Node)  │  (ToolNode)    │  (Your logic)          │
+├────────────────┼────────────────┼────────────────────────┤
+│  Calls the LLM │  Executes tools│  Any Python code       │
+│  Returns       │  Returns       │  Returns               │
+│  AIMessage     │  ToolMessages  │  State updates         │
+│  (may have     │                │                        │
+│  tool_calls)   │                │                        │
+└────────────────┴────────────────┴────────────────────────┘
+```
+
+### Model Node (Agent Node)
+
+The node that invokes the LLM. Its job:
+1. Read messages from state
+2. Call `model.invoke(messages)` (with tools bound)
+3. Return the `AIMessage` as a state update
+
+```python
+def model_node(state: MessagesState):
+    """The 'brain' — calls the LLM."""
+    response = model_with_tools.invoke(state["messages"])
+    return {"messages": [response]}
+```
+
+**What comes out:** An `AIMessage` that either:
+- Has `content` (final answer) → route to END
+- Has `tool_calls` (needs tools) → route to tool node
+
+### Tool Node
+
+The node that executes requested tools. Its job:
+1. Read the last `AIMessage` from state
+2. Execute each tool call
+3. Return `ToolMessage` objects
+
+```python
+from langgraph.prebuilt import ToolNode
+
+# Prebuilt — handles everything automatically
+tool_node = ToolNode(tools)
+
+# OR manual equivalent:
+def manual_tool_node(state: MessagesState):
+    last_msg = state["messages"][-1]
+    results = []
+    for tc in last_msg.tool_calls:
+        tool = tool_map[tc["name"]]
+        result = tool.invoke(tc)
+        results.append(result)
+    return {"messages": results}
+```
+
+### Custom Nodes
+
+Any logic that isn't LLM calls or tool execution:
+
+```python
+def check_guardrails(state: MessagesState):
+    """Custom node: check if the response violates safety rules."""
+    last = state["messages"][-1]
+    if "forbidden_word" in last.content:
+        return {"messages": [AIMessage(content="I can't help with that.")]}
+    return {"messages": []}
+
+def enrich_context(state: MyState):
+    """Custom node: add user preferences to state before LLM call."""
+    user_prefs = load_from_db(state["user_id"])
+    return {"user_preferences": user_prefs}
+```
+
+### How They Connect (The Standard Pattern)
+
+```python
+graph = StateGraph(MessagesState)
+
+# Register nodes
+graph.add_node("agent", model_node)           # Model (agent) node
+graph.add_node("tools", ToolNode(tools))      # Tool node
+graph.add_node("guardrails", check_guardrails) # Custom node
+
+# Wire edges
+graph.add_edge(START, "agent")
+graph.add_conditional_edges("agent", should_continue)  # → "tools" or END
+graph.add_edge("tools", "agent")                       # tools → back to agent
+```
+
+### C# Analogy
+
+| Node Type | C# Equivalent |
+|-----------|---------------|
+| Model Node | A controller action that calls an AI service |
+| Tool Node | A mediator/dispatcher that routes commands to handlers |
+| Custom Node | Business logic middleware / validation service |
+| The routing between them | ASP.NET pipeline with `UseWhen()` branching |
+
+---
+
+## 20. with_config & Runnable Binding
+
+### The Problem
+
+Sometimes you want to attach default configuration to a runnable so you don't have to pass it every time:
+
+```python
+# Annoying: passing tags/metadata on every call
+model.invoke("hello", config={"tags": ["production"], "metadata": {"team": "AI"}})
+model.invoke("world", config={"tags": ["production"], "metadata": {"team": "AI"}})
+```
+
+### The Solution: `with_config`
+
+```python
+# Bind config once — it flows automatically
+configured_model = model.with_config(
+    tags=["production"],
+    metadata={"team": "AI"},
+    run_name="my_model"
+)
+
+# Now just invoke — config is already attached
+configured_model.invoke("hello")
+configured_model.invoke("world")
+```
+
+### What `with_config` Does
+
+It creates a **new runnable** that wraps the original with default config. The original is unchanged:
+
+```python
+original_model = ChatOpenAI(model="gpt-4o")
+
+# Creates a new object — original is untouched
+tagged_model = original_model.with_config(tags=["v2"], run_name="chat")
+
+original_model.invoke("hi")   # No tags
+tagged_model.invoke("hi")     # Has tags=["v2"], run_name="chat"
+```
+
+### Config Precedence (Merge Rules)
+
+When you call `.invoke()` with config AND the runnable has `with_config`, they **merge**:
+
+```python
+configured = model.with_config(tags=["default"], metadata={"source": "app"})
+
+# Invocation config merges ON TOP of with_config
+configured.invoke("hello", config={
+    "tags": ["override"],           # ← Extends: tags becomes ["default", "override"]
+    "metadata": {"request": "123"}, # ← Merges: {"source": "app", "request": "123"}
+    "run_name": "specific_call",    # ← Overrides run_name
+})
+```
+
+| Field | Merge Behavior |
+|-------|---------------|
+| `tags` | Combined (union) |
+| `metadata` | Merged (invocation wins on conflict) |
+| `run_name` | Overridden (invocation wins) |
+| `configurable` | Merged |
+| `callbacks` | Combined |
+
+### How Config Flows Through a Graph
+
+When you call `app.invoke(input, config={...})`:
+
+1. The config is passed to the **first node**
+2. Each node inherits the config automatically
+3. Sub-calls (model.invoke inside a node) also receive it
+4. `tags` and `metadata` propagate to ALL sub-calls
+5. `run_name` does NOT propagate (it's per-call only)
+
+```python
+# Config flows through the entire graph
+app.invoke(
+    {"messages": [...]},
+    config={
+        "configurable": {"thread_id": "abc"},  # → Checkpointer uses this
+        "tags": ["user-request"],               # → All nodes/tools inherit
+        "metadata": {"user_id": "123"},        # → All nodes/tools inherit
+    }
+)
+```
+
+### Related: `configurable_fields` (Runtime Model Switching)
+
+For models, you can make specific fields configurable at runtime:
+
+```python
+from langchain.chat_models import init_chat_model
+
+model = init_chat_model(
+    "gpt-4o",
+    temperature=0,
+    configurable_fields=("model", "temperature"),  # ← These can be overridden
+)
+
+# Override at runtime via config
+model.invoke("hello", config={"configurable": {"model": "gpt-4o-mini", "temperature": 0.9}})
+```
+
+### Related: `with_retry` and Other Binding Methods
+
+`with_config` is part of a family of binding methods on all runnables:
+
+| Method | What It Does |
+|--------|-------------|
+| `with_config(...)` | Attach default config (tags, metadata, run_name) |
+| `with_retry(...)` | Add retry logic with exponential backoff |
+| `with_fallbacks(...)` | Try alternative runnables if this one fails |
+| `bind(...)` | Bind keyword arguments to the runnable's invoke |
+| `bind_tools(...)` | Bind tool schemas (model-specific) |
+
+```python
+# Chaining: model with tools, retries, and default config
+robust_model = (
+    ChatOpenAI(model="gpt-4o")
+    .bind_tools(tools)
+    .with_retry(stop_after_attempt=3)
+    .with_config(tags=["production"])
+)
+```
+
+### C# Analogy
+
+| LangChain | C# Equivalent |
+|-----------|---------------|
+| `with_config(tags=[...])` | `.AddOptions(o => o.Tags = [...])` in DI / configuration binding |
+| Config flowing through graph | `HttpContext` propagating through middleware pipeline |
+| `configurable_fields` | `IOptionsSnapshot<T>` — values can change per-request |
+| `with_retry` | Polly retry policy `.AddPolicyHandler(Policy.WaitAndRetry(...))` |
+| `with_fallbacks` | Polly fallback policy / circuit breaker |
+| `bind(...)` | Partial application / currying in functional C# |
+
+---
+
+## 21. Interview Q&A Anchors
 
 **Q: What is LangGraph and how does it differ from LangChain?**
 > **A:** LangChain provides model/tool integrations and agent abstractions (the "what" — models, prompts, tools). LangGraph is the orchestration runtime (the "how" — state management, persistence, human-in-the-loop, streaming). You can use LangGraph without LangChain, but they complement each other. Think of LangChain as the .NET SDK libraries and LangGraph as the ASP.NET runtime.
@@ -1613,6 +1984,18 @@ class MyState(TypedDict):
 **Q: What is `recursion_limit` and when would you change it?**
 > **A:** It's the maximum number of node executions before the graph force-stops (default: 25). It prevents infinite agent loops where the model keeps requesting tools that keep failing. Increase it for complex multi-step agents; decrease it for cost-sensitive applications. When exceeded, a `GraphRecursionError` is raised.
 
+**Q: What is `ToolNode` and why would you use it instead of manually executing tools?**
+> **A:** `ToolNode` is a prebuilt LangGraph class that handles the entire tool execution step: it reads `tool_calls` from the last `AIMessage`, finds the matching tool by name, executes it, wraps results in `ToolMessage` objects with correct `tool_call_id`, and handles errors. Use it to avoid 10+ lines of boilerplate in every agent graph. Use manual execution only when you need custom logic per tool (auth, logging, partial execution).
+
+**Q: What are the typical node types in a LangGraph agent?**
+> **A:** Three archetypes: (1) **Model node** — calls the LLM, returns `AIMessage` (may contain `tool_calls`); (2) **Tool node** — executes requested tools, returns `ToolMessage` objects; (3) **Custom nodes** — any business logic (guardrails, enrichment, database calls). The standard flow is: model node → conditional edge (tool_calls?) → tool node → back to model node.
+
+**Q: What does `with_config` do and how is it different from passing config to `.invoke()`?**
+> **A:** `with_config` binds default configuration (tags, metadata, run_name) to a runnable permanently, creating a new wrapped object. When you call `.invoke(config=...)`, the invocation config merges on top (tags combine, metadata merges, run_name overrides). Use `with_config` to avoid repeating the same config on every call; use invocation config for per-request overrides.
+
+**Q: How does config flow through a LangGraph execution?**
+> **A:** When you call `app.invoke(input, config={...})`, the config propagates to all nodes and their sub-calls. `tags` and `metadata` are inherited by every step (model calls, tool calls). `run_name` is per-call only. `configurable.thread_id` is read by the checkpointer. This means a single config dict at the top controls tracing, persistence, and runtime behavior for the entire graph execution.
+
 ---
 
 ## References
@@ -1625,3 +2008,5 @@ class MyState(TypedDict):
 - [LangChain Middleware](https://docs.langchain.com/oss/python/langchain/middleware)
 - [LangChain Structured Output](https://docs.langchain.com/oss/python/langchain/structured-output)
 - [LangChain Messages](https://docs.langchain.com/oss/python/langchain/messages)
+- [LangGraph ToolNode](https://docs.langchain.com/oss/python/langgraph/workflows-agents#toolnode)
+- [LangChain Runnable Interface](https://docs.langchain.com/oss/python/langchain/runnables)
