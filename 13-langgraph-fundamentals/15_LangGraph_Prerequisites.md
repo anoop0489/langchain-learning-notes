@@ -30,7 +30,11 @@
 | 18 | [ToolNode — Prebuilt Tool Executor](#18-toolnode--prebuilt-tool-executor) | The prebuilt node that executes tool calls automatically |
 | 19 | [Node Types in a Graph](#19-node-types-in-a-graph) | Model node vs tool node vs custom node — roles and responsibilities |
 | 20 | [with_config & Runnable Binding](#20-with_config--runnable-binding) | Attaching config to runnables, how config flows through graphs |
-| 21 | [Interview Q&A Anchors](#21-interview-qa-anchors) | Quick-fire answers for all prerequisites |
+| 21 | [System Instructions in Graphs](#21-system-instructions-in-graphs) | SystemMessage, prompt templates, agent identity |
+| 22 | [Graph Streaming](#22-graph-streaming) | `stream_mode`, node updates vs token streaming, frontend patterns |
+| 23 | [Time Travel & State History](#23-time-travel--state-history) | `get_state_history`, replaying, forking conversations |
+| 24 | [Human-in-the-Loop Deep Dive](#24-human-in-the-loop-deep-dive) | `interrupt_before/after`, `get_state`, `update_state`, approval workflows |
+| 25 | [Interview Q&A Anchors](#25-interview-qa-anchors) | Quick-fire answers for all prerequisites |
 
 ---
 
@@ -1931,7 +1935,302 @@ robust_model = (
 
 ---
 
-## 21. Interview Q&A Anchors
+## 21. System Instructions in Graphs
+
+### The Pattern
+
+In a LangGraph agent, system instructions define the agent's identity. There are two approaches:
+
+**Approach 1: Prepend SystemMessage in the model node**
+
+```python
+from langchain_core.messages import SystemMessage
+
+SYSTEM_PROMPT = """You are a helpful weather assistant.
+Only use the get_weather tool when asked about weather.
+Always be concise."""
+
+def model_node(state: MessagesState):
+    # Prepend system message to every LLM call
+    messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+    response = model_with_tools.invoke(messages)
+    return {"messages": [response]}
+```
+
+**Approach 2: Use `system_prompt` parameter in `create_agent`**
+
+```python
+from langchain.agents import create_agent
+
+agent = create_agent(
+    model=model,
+    tools=[get_weather],
+    system_prompt="You are a helpful weather assistant. Be concise.",
+)
+# The factory handles prepending SystemMessage internally
+```
+
+### ChatPromptTemplate (For Complex Prompts)
+
+When your system prompt has dynamic variables:
+
+```python
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are {persona}. Respond in {language}."),
+    MessagesPlaceholder("messages"),  # ← Existing conversation history injected here
+])
+
+def model_node(state: MessagesState):
+    formatted = prompt.invoke({
+        "persona": "a senior engineer",
+        "language": "English",
+        "messages": state["messages"],
+    })
+    response = model.invoke(formatted)
+    return {"messages": [response]}
+```
+
+### Key Rule: System Message Is NOT Stored in State
+
+The system prompt is typically **not** stored in `state["messages"]`. It's prepended fresh on every LLM call. This prevents it from being modified by tools or other nodes.
+
+---
+
+## 22. Graph Streaming
+
+### The Difference: Graph Streaming vs Model Streaming
+
+| Type | What Streams | API |
+|------|-------------|-----|
+| **Model streaming** | Individual tokens as the LLM generates | `model.stream("hello")` |
+| **Graph streaming** | Node outputs as each node completes | `app.stream(input, stream_mode="updates")` |
+| **Both combined** | Tokens within node execution | `app.astream_events(input)` |
+
+### stream_mode Options
+
+```python
+# Option 1: "values" — full state after each node
+for state_snapshot in app.stream(input, config=config, stream_mode="values"):
+    print(state_snapshot["messages"][-1])
+    # Emits the FULL state dict after each node completes
+
+# Option 2: "updates" — only what changed
+for update in app.stream(input, config=config, stream_mode="updates"):
+    print(update)
+    # {"model_node": {"messages": [AIMessage(...)]}}
+    # {"tool_node": {"messages": [ToolMessage(...)]}}
+
+# Option 3: "messages" — message-level streaming (tokens + node boundaries)
+for msg, metadata in app.stream(input, config=config, stream_mode="messages"):
+    print(msg.content, end="", flush=True)
+    # Streams individual tokens as they arrive from the LLM
+```
+
+### Frontend Pattern (Node Progress + Token Streaming)
+
+```python
+# Show progress per node AND stream tokens
+for chunk in app.stream(input, config=config, stream_mode="updates"):
+    for node_name, node_output in chunk.items():
+        if node_name == "model":
+            print(f"🧠 Model thinking...")
+        elif node_name == "tools":
+            print(f"🔧 Executing tools...")
+        print(node_output["messages"][-1].content)
+```
+
+### Async Streaming (Production)
+
+```python
+async for event in app.astream_events(input, config=config, version="v2"):
+    if event["event"] == "on_chat_model_stream":
+        token = event["data"]["chunk"].content
+        await send_to_frontend(token)
+    elif event["event"] == "on_chain_end":
+        node = event["name"]
+        await send_progress(f"Completed: {node}")
+```
+
+---
+
+## 23. Time Travel & State History
+
+### What Is Time Travel?
+
+Because checkpointers save state after **every** node execution, you have a complete history. Time travel lets you:
+1. **Inspect** — see the state at any point in the conversation
+2. **Replay** — re-execute from a previous checkpoint
+3. **Fork** — branch off from a past state into a new timeline
+
+### get_state — Inspect Current State
+
+```python
+# After invoking the graph:
+current = app.get_state(config)
+print(current.values["messages"])      # Current messages
+print(current.next)                     # Which node would execute next (if interrupted)
+print(current.config["configurable"])   # thread_id, checkpoint_id
+```
+
+### get_state_history — Browse All Checkpoints
+
+```python
+# Walk backwards through every state snapshot
+for state in app.get_state_history(config):
+    print(f"Step: {state.config['configurable']['checkpoint_id']}")
+    print(f"  Next node: {state.next}")
+    print(f"  Messages: {len(state.values['messages'])}")
+    print("---")
+```
+
+Each checkpoint has:
+- `values` — the full state at that point
+- `next` — which node was about to execute
+- `config` — includes `checkpoint_id` for targeting
+
+### Forking — Branch From a Past State
+
+```python
+# Get history
+history = list(app.get_state_history(config))
+
+# Pick a past checkpoint (e.g., before the tool call went wrong)
+past_state = history[2]  # 3rd checkpoint from the end
+
+# Fork: invoke from that checkpoint with a different input
+forked_config = past_state.config  # Contains the checkpoint_id
+result = app.invoke(
+    {"messages": [{"role": "user", "content": "Actually, try a different city"}]},
+    config=forked_config,
+)
+# This creates a NEW timeline branch from that past state
+```
+
+### Why This Matters
+
+| Capability | Use Case |
+|-----------|----------|
+| Inspect state | Debugging — "what did the model see at step 3?" |
+| Replay | Testing — re-run with same inputs to verify fixes |
+| Fork | User says "go back and try something else" |
+| Audit | Compliance — full trace of agent decisions |
+
+---
+
+## 24. Human-in-the-Loop Deep Dive
+
+### interrupt_before — Intercept Before Execution
+
+The graph **stops** right before a node runs. The checkpoint stores the pending state including what the model requested:
+
+```python
+app = graph.compile(
+    checkpointer=MemorySaver(),
+    interrupt_before=["tools"],  # ← Pause before tool execution
+)
+
+# Invoke — runs model_node, then STOPS before tools
+result = app.invoke(
+    {"messages": [{"role": "user", "content": "Delete all my files"}]},
+    config={"configurable": {"thread_id": "session-1"}},
+)
+# Graph is now frozen. The AIMessage with tool_calls is in state.
+```
+
+### Inspecting the Frozen State
+
+```python
+state = app.get_state(config)
+print(state.next)  # ("tools",) — this is what would execute next
+print(state.values["messages"][-1].tool_calls)
+# [{'name': 'delete_files', 'args': {'path': '/'}, 'id': 'call_xyz'}]
+# ↑ Human reviewer can see what the model wants to do
+```
+
+### update_state — Modify Before Resuming
+
+```python
+from langchain_core.messages import AIMessage
+
+# Option A: Approve as-is — just resume
+app.invoke(None, config=config)
+
+# Option B: Modify the tool call arguments
+corrected_msg = AIMessage(
+    content="",
+    tool_calls=[{
+        "name": "delete_files",
+        "args": {"path": "/tmp/old_files"},  # ← Changed from "/" to safe path
+        "id": "call_xyz",
+    }]
+)
+app.update_state(config, {"messages": [corrected_msg]})
+app.invoke(None, config=config)  # Resume with corrected arguments
+
+# Option C: Reject — override with a final response
+app.update_state(
+    config,
+    {"messages": [AIMessage(content="I cannot delete system files.")]},
+    as_node="model",  # ← Pretend this came from the model node
+)
+# Graph sees a final answer (no tool_calls) and routes to END
+```
+
+### interrupt_after — Intercept After Execution
+
+The graph **stops** after a node runs but before passing results downstream:
+
+```python
+app = graph.compile(
+    checkpointer=MemorySaver(),
+    interrupt_after=["tools"],  # ← Pause AFTER tools execute, BEFORE model reads results
+)
+
+# Invoke — runs model → tools, then STOPS
+result = app.invoke({"messages": [...]}, config=config)
+
+# Check what the tools returned
+state = app.get_state(config)
+tool_result = state.values["messages"][-1]  # ToolMessage with raw output
+print(tool_result.content)
+# "User's SSN: 123-45-6789, Balance: $50,000"
+# ↑ Admin can redact PII before LLM sees it
+
+# Redact and resume
+from langchain_core.messages import ToolMessage
+redacted = ToolMessage(
+    content="Balance: $50,000 [PII redacted]",
+    tool_call_id=tool_result.tool_call_id,
+    id=tool_result.id,  # Same ID to replace via add_messages dedup
+)
+app.update_state(config, {"messages": [redacted]})
+app.invoke(None, config=config)  # Model now sees redacted version
+```
+
+### The Checkpoint Database (Conceptual)
+
+Internally, checkpoints are stored with a compound key:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Checkpoint Store (e.g., PostgreSQL table)                │
+├──────────────┬──────────────────┬────────────────────────┤
+│  thread_id   │  checkpoint_id    │  state_json           │
+├──────────────┼──────────────────┼────────────────────────┤
+│  session-1   │  ckpt-001         │  {messages: [...]}    │
+│  session-1   │  ckpt-002         │  {messages: [...]}    │
+│  session-1   │  ckpt-003         │  {messages: [...]}    │ ← interrupted here
+│  session-2   │  ckpt-001         │  {messages: [...]}    │
+└──────────────┴──────────────────┴────────────────────────┘
+```
+
+Each row is like a git commit — immutable, ordered, and replayable.
+
+---
+
+## 25. Interview Q&A Anchors
 
 **Q: What is LangGraph and how does it differ from LangChain?**
 > **A:** LangChain provides model/tool integrations and agent abstractions (the "what" — models, prompts, tools). LangGraph is the orchestration runtime (the "how" — state management, persistence, human-in-the-loop, streaming). You can use LangGraph without LangChain, but they complement each other. Think of LangChain as the .NET SDK libraries and LangGraph as the ASP.NET runtime.
@@ -1995,6 +2294,21 @@ robust_model = (
 
 **Q: How does config flow through a LangGraph execution?**
 > **A:** When you call `app.invoke(input, config={...})`, the config propagates to all nodes and their sub-calls. `tags` and `metadata` are inherited by every step (model calls, tool calls). `run_name` is per-call only. `configurable.thread_id` is read by the checkpointer. This means a single config dict at the top controls tracing, persistence, and runtime behavior for the entire graph execution.
+
+**Q: How do system instructions work in a LangGraph agent?**
+> **A:** You prepend a `SystemMessage` to the messages list inside your model node before calling the LLM. The system message is NOT stored in `state["messages"]` — it's added fresh on each call so nodes and tools can't accidentally mutate it. For `create_agent`, you pass `system_prompt="..."` and the factory handles it.
+
+**Q: What are the graph streaming modes and when would you use each?**
+> **A:** Three modes: `"values"` emits full state after each node (good for debugging); `"updates"` emits only the changes per node (good for progress indicators); `"messages"` streams individual tokens as the LLM generates them (good for real-time UX). Use `astream_events` when you need both token-level streaming AND node boundary events.
+
+**Q: What is time travel in LangGraph?**
+> **A:** Because checkpointers save state after every node, you can browse the full history with `get_state_history()`, inspect any past checkpoint, and fork a new conversation from any historical point by invoking with that checkpoint's config. It's like git — each checkpoint is an immutable commit, and you can branch from any commit.
+
+**Q: Explain interrupt_before vs interrupt_after.**
+> **A:** `interrupt_before=["tools"]` stops the graph BEFORE the tools node runs — you see what the model wants to do and can approve, modify, or reject. `interrupt_after=["tools"]` stops AFTER tools run but BEFORE the model reads results — you can redact sensitive data. Both patterns use `get_state()` to inspect, `update_state()` to modify, and `invoke(None)` to resume.
+
+**Q: How does `update_state` work with `as_node`?**
+> **A:** `update_state(config, values, as_node="model")` injects values into state as if they came from the named node. This matters for routing — if you inject an `AIMessage` without `tool_calls` as the model node, the conditional edge sees "no tool calls" and routes to END, effectively rejecting the tool request.
 
 ---
 
