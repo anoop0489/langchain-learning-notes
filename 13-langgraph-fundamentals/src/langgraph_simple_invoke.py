@@ -15,19 +15,19 @@ if sys.platform == "win32":
 import truststore
 truststore.inject_into_ssl()
 
+import os
 from dotenv import load_dotenv
+load_dotenv()
+
+# Route LangSmith traces to a dedicated project (must be set BEFORE langchain imports)
+os.environ["LANGCHAIN_PROJECT"] = "langgraph-fundamentals"
+
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
-
-load_dotenv()
-
-# Route LangSmith traces to a dedicated project for LangGraph work
-import os
-os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
 
 
 # --- State: just use MessagesState (has messages built-in) ---

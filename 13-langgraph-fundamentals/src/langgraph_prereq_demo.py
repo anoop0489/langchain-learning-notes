@@ -33,9 +33,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Route LangSmith traces to a dedicated project for LangGraph work
-import os
-os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
+# Route LangSmith traces to a dedicated project (must be set BEFORE langchain imports)
+os.environ["LANGCHAIN_PROJECT"] = "langgraph-fundamentals"
 
 # ============================================================================
 # TOPIC 1: State & TypedDict
