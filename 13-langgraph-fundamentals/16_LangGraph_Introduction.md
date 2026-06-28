@@ -18,7 +18,8 @@
 | 8 | [Flow Engineering](#8-flow-engineering) | The philosophy: developers define the flow, LLMs execute within it |
 | 9 | [LangGraph Core Components](#9-langgraph-core-components) | Nodes, edges, conditional edges, state, START, END |
 | 10 | [Project: ReAct Agent with Function Calling](#10-project-react-agent-with-function-calling) | The first real LangGraph implementation — Chapters 90-97 |
-| 11 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers for interviews |
+| 11 | [The Evolution of ReAct Agents — Full Recap](#11-the-evolution-of-react-agents--full-recap-chapter-97) | From ReAct prompt → function calling → LangGraph → create_agent |
+| 12 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers for interviews |
 
 ---
 
@@ -617,6 +618,81 @@ This **iterative reasoning** is what makes ReAct powerful. Each cycle gives the 
 ### Runnable Script
 
 → [`src/langgraph_react_agent.py`](./src/langgraph_react_agent.py)
+
+---
+
+## 11. The Evolution of ReAct Agents — Full Recap (Chapter 97)
+
+> **Chapter 97** — Eden's closing recap of how ReAct agents evolved from hacky prompt parsing to LangGraph's `create_agent`. This is the last chapter of Section 13 before the course moves to Section 14.
+
+### The Timeline (How We Got Here)
+
+```
+ERA 1: ReAct Prompt (2022)
+─────────────────────────
+  • The ReAct paper showed: LLM can reason + act in a loop
+  • LangChain implemented it with:
+    - A special prompt telling LLM to output "Thought/Action/Observation"
+    - Regex parsing to extract which tool to call from LLM text output
+  • Problem: LLMs weren't strong enough → one wrong token breaks parsing
+  • Result: Impressive demo, NOT production-ready
+
+ERA 2: Function Calling (2023)
+──────────────────────────────
+  • LLM vendors (OpenAI, Anthropic) added function calling to their APIs
+  • Now the LLM returns structured JSON saying "call this function with these args"
+  • No more hacky prompt or regex parsing needed
+  • Problem: Every vendor did it differently (different field names, formats)
+
+ERA 3: LangChain Tool Calling Interface
+───────────────────────────────────────
+  • LangChain created ONE unified interface: .bind_tools() and tool_calls
+  • Works with every vendor (OpenAI, Anthropic, Google, Ollama, etc.)
+  • You write one codebase, swap models freely
+  • But the agent loop was still a Python while-loop (AgentExecutor)
+  • Problem: No visibility, no control, no persistence, can't pause mid-loop
+
+ERA 4: LangGraph (2024)
+────────────────────────
+  • Modeled agents as GRAPHS (nodes + edges + state)
+  • Now the loop is explicit, visual, controllable
+  • Added: checkpoints, time travel, HIL, streaming, subgraphs
+  • The agent executor's hidden while-loop became an explicit cycle in a graph
+
+ERA 5: create_agent (LangGraph 1.0)
+────────────────────────────────────
+  • Simplified API: give it model + tools, get a compiled graph back
+  • Replaced: create_react_agent, prebuilt agents
+  • Under the hood: still a LangGraph graph with all its powers
+  • But with a clean one-liner interface for common cases
+```
+
+### What Each Era Fixed
+
+| Era | The Problem | The Solution |
+|-----|------------|--------------|
+| ReAct Prompt | No structured way for LLM to request tools | Special prompt + regex parsing |
+| Function Calling | Regex parsing was unreliable | Vendor-native structured output |
+| LangChain Interface | Every vendor did it differently | Unified `.bind_tools()` / `tool_calls` |
+| LangGraph | Agent loop was a hidden while-loop with no control | Explicit graph with checkpoints, HIL, visibility |
+| create_agent | LangGraph boilerplate for simple cases | One-liner that returns a compiled graph |
+
+### Why This Matters For You
+
+After this section, you should understand:
+
+1. **What `create_agent` does** — It returns a compiled LangGraph graph. It's not magic.
+2. **How it's implemented** — Exactly what you built in `langgraph_react_agent.py`: agent node → conditional edge → tool node → cycle back.
+3. **When to use `create_agent` vs build your own graph** — Use `create_agent` for simple ReAct loops. Build your own graph when you need custom nodes, multiple agents, HIL, or non-standard flows.
+4. **The full history** — From regex hacks to graph-based orchestration. Each step solved one problem and revealed the next.
+
+### The Key Insight
+
+> Every paper that describes an agent... actually describes a graph with nodes and edges. LangGraph just made that explicit.
+>
+> — Eden (paraphrased)
+
+The agent executor's hidden `while` loop was always a graph — it was just invisible. LangGraph made the control flow visible, debuggable, and customizable.
 
 ---
 
