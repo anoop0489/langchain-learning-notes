@@ -58,6 +58,7 @@ The capstone — production challenges, the LLM landscape, privacy, open-source 
 *Folder: [`/13-langgraph-fundamentals`](./13-langgraph-fundamentals)*
 LangGraph orchestration runtime — prerequisites, state graphs, persistence, and agentic workflows.
 * [15. LangGraph Prerequisites (Modern LangChain Patterns: ToolRuntime, Command, Middleware, StateGraph, Checkpointers)](./13-langgraph-fundamentals/15_LangGraph_Prerequisites.md)
+* [16. Introduction to LangGraph (Autonomy Spectrum, Flow Engineering, Core Components)](./13-langgraph-fundamentals/16_LangGraph_Introduction.md)
 
 ---
 
