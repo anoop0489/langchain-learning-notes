@@ -62,6 +62,10 @@ from langgraph.prebuilt import ToolNode
 
 load_dotenv()
 
+# Route LangSmith traces to a dedicated project for LangGraph work
+import os
+os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
+
 
 # =====================================================================
 # TOOLS: Define what the agent can DO in the real world.

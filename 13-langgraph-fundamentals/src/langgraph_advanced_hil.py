@@ -33,6 +33,10 @@ from langgraph.types import Command
 
 load_dotenv()
 
+# Route LangSmith traces to a dedicated project for LangGraph work
+import os
+os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
+
 # ╔═══════════════════════════════════════════════════════════════════════╗
 # ║          QUICK REFERENCE — HOW STATE GETS UPDATED IN LANGGRAPH       ║
 # ╠═══════════════════════════════════════════════════════════════════════╣

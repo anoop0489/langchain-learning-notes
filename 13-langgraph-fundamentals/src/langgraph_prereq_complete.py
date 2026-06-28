@@ -35,9 +35,13 @@ from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
+# Route LangSmith traces to a dedicated project for LangGraph work
+import os
+os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
+
 
 # ---------------------------------------------------------------------------
-# STATE: Inherit from MessagesState (which already has messages: Annotated[list, add_messages]).
+# STATE: Inherit from MessagesState
 # We only add our EXTRA fields on top. This is the idiomatic pattern —
 # don't redefine the messages field yourself when LangGraph already provides it.
 # ---------------------------------------------------------------------------

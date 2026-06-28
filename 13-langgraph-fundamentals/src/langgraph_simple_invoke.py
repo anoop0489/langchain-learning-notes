@@ -25,6 +25,10 @@ from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
+# Route LangSmith traces to a dedicated project for LangGraph work
+import os
+os.environ.setdefault("LANGCHAIN_PROJECT", "langgraph-fundamentals")
+
 
 # --- State: just use MessagesState (has messages built-in) ---
 # No extra fields needed for this simple example.
