@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Route LangSmith traces to a dedicated project (must be set BEFORE langchain imports)
-os.environ["LANGCHAIN_PROJECT"] = "langgraph-fundamentals"
+os.environ["LANGSMITH_PROJECT"] = "langgraph-fundamentals"
 
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
