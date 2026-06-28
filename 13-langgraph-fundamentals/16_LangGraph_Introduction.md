@@ -17,7 +17,8 @@
 | 7 | [State Machines](#7-state-machines) | States + transitions = controllable computation |
 | 8 | [Flow Engineering](#8-flow-engineering) | The philosophy: developers define the flow, LLMs execute within it |
 | 9 | [LangGraph Core Components](#9-langgraph-core-components) | Nodes, edges, conditional edges, state, START, END |
-| 10 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers for interviews |
+| 10 | [Project: ReAct Agent with Function Calling](#10-project-react-agent-with-function-calling) | The first real LangGraph implementation — Chapters 90-97 |
+| 11 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers for interviews |
 
 ---
 
@@ -533,6 +534,89 @@ Eden addresses this directly: "I can build it with Airflow or NetworkX or anothe
 | Parallel node execution | Varies | Built-in |
 
 You *could* build all of this with Airflow. But LangGraph gives you all of it out of the box because it's designed specifically for LLM-driven state machines.
+
+---
+
+## 10. Project: ReAct Agent with Function Calling
+
+> **Chapters 90-97** — Eden implements the first real LangGraph program: a ReAct agent that uses function calling to answer questions requiring multiple tool invocations.
+
+### What This Project Demonstrates
+
+This is the **simplest possible LangGraph agent** and the pattern that 90% of production agents follow. It takes everything from the theory sections above and puts it into working code.
+
+### The Graph (Visual)
+
+![ReAct Agent Flow](./assets/react_agent_flow.png)
+
+### How It Works — Step by Step
+
+```
+User: "What is the temperature in Tokyo? List it and then triple it"
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ITERATION 1                                                         │
+│   agent_reason: LLM thinks → "I need to search for Tokyo temp"     │
+│   → AIMessage with tool_calls=[{name: 'tavily_search', args: ...}] │
+│   should_continue: has tool_calls? YES → route to 'act'            │
+│   act: TavilySearch runs → returns "71°F"                          │
+│   → ToolMessage(content="71°F...")                                 │
+│   → Edge: act → agent_reason (CYCLE BACK)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│ ITERATION 2                                                         │
+│   agent_reason: LLM sees result → "I need to triple 71"            │
+│   → AIMessage with tool_calls=[{name: 'triple', args: {num: 71}}]  │
+│   should_continue: has tool_calls? YES → route to 'act'            │
+│   act: triple(71) runs → returns 213.0                             │
+│   → ToolMessage(content="213.0")                                   │
+│   → Edge: act → agent_reason (CYCLE BACK)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│ ITERATION 3                                                         │
+│   agent_reason: LLM sees both results → "I have everything"        │
+│   → AIMessage with content="Tokyo is 71°F. Tripled: 213°F."       │
+│   should_continue: has tool_calls? NO → route to END               │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Architecture Breakdown
+
+| Component | What It Is | Code |
+|-----------|-----------|------|
+| **State** | `MessagesState` — just a list of messages | `StateGraph(MessagesState)` |
+| **Node 1** | `agent_reason` — calls LLM with tools bound | Returns AIMessage |
+| **Node 2** | `act` — ToolNode executes requested tools | Returns ToolMessage(s) |
+| **Edge** | `act → agent_reason` — the cycle | `graph.add_edge(ACT, AGENT_REASON)` |
+| **Conditional Edge** | `agent_reason → act OR END` | Checks `tool_calls` on last message |
+| **Tools** | TavilySearch (web search) + triple (custom math) | Bound to LLM via `bind_tools()` |
+
+### The Two Tools
+
+| Tool | Type | Purpose | When LLM Uses It |
+|------|------|---------|-------------------|
+| `TavilySearch` | Pre-built (langchain-tavily) | Real-time web search | Questions about live data (weather, news, facts) |
+| `triple` | Custom `@tool` function | Multiplies by 3 | When explicitly asked to triple a number |
+
+### Why This Is an Agent (Not a Chain)
+
+The **cycle** `act → agent_reason` is what makes it an agent:
+
+- A **chain** would be: search → done (one-directional, no loop)
+- An **agent** is: search → think → maybe search again → think → maybe triple → think → done
+
+The LLM gets to **decide at each iteration** whether to use another tool or give the final answer. This is LLM-driven control flow with cycles — the exact definition from Section 4.
+
+### Key Observation: The LLM Plans Multi-Step Execution
+
+Notice the LLM doesn't call both tools at once. It:
+1. First searches (because it doesn't know the temperature yet)
+2. Gets the result, THEN decides to triple it
+3. Gets that result, THEN gives the final answer
+
+This **iterative reasoning** is what makes ReAct powerful. Each cycle gives the LLM new information to decide the next action.
+
+### Runnable Script
+
+→ [`src/langgraph_react_agent.py`](./src/langgraph_react_agent.py)
 
 ---
 
