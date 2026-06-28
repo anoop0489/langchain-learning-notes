@@ -33,6 +33,52 @@ from langgraph.types import Command
 
 load_dotenv()
 
+# ╔═══════════════════════════════════════════════════════════════════════╗
+# ║          QUICK REFERENCE — HOW STATE GETS UPDATED IN LANGGRAPH       ║
+# ╠═══════════════════════════════════════════════════════════════════════╣
+# ║                                                                       ║
+# ║  WHO CAN UPDATE STATE?                                                ║
+# ║  ─────────────────────                                                ║
+# ║  1. REGULAR NODE (e.g., agent_node)                                   ║
+# ║     → Receives full state, returns a dict with fields to update       ║
+# ║     → Can update ANY field: messages, order_status, budget, etc.      ║
+# ║     → Example: return {"messages": [ai_msg], "order_status": "New"}   ║
+# ║                                                                       ║
+# ║  2. TOOLNODE (prebuilt)                                               ║
+# ║     → Internally runs tool functions, wraps output in ToolMessage     ║
+# ║     → Only updates: {"messages": [ToolMessage(...)]}                  ║
+# ║     → CANNOT update custom fields (order_status, budget, etc.)        ║
+# ║                                                                       ║
+# ║  3. TOOL FUNCTION (plain @tool)                                       ║
+# ║     → Just a function. Returns a string. That's it.                   ║
+# ║     → It does NOT receive state, it does NOT update state.            ║
+# ║     → ToolNode wraps its return value into a ToolMessage.             ║
+# ║                                                                       ║
+# ║  4. TOOL FUNCTION with COMMAND (@tool returning Command)              ║
+# ║     → The ONLY way a tool function can update custom state fields.    ║
+# ║     → Returns Command(update={"order_status": "Done", "messages": [..]})
+# ║     → This bypasses ToolNode's normal wrapping — it writes directly.  ║
+# ║                                                                       ║
+# ║  WHEN DO YOU NEED COMMAND?                                            ║
+# ║  ──────────────────────────                                           ║
+# ║  • Your tool needs to WRITE to custom state fields (not just messages)║
+# ║  • Example: tool sets order_status, budget, destination, etc.         ║
+# ║  • Without Command, tool output is just a string in a ToolMessage —   ║
+# ║    the LLM sees it, but your state fields remain unchanged.           ║
+# ║                                                                       ║
+# ║  SIMPLE MENTAL MODEL:                                                 ║
+# ║  ────────────────────                                                 ║
+# ║    Node    → "I have the state, I return updates"                     ║
+# ║    Tool    → "I just compute and return a string"                     ║
+# ║    Command → "I'm a tool, but I ALSO need to update state"            ║
+# ║                                                                       ║
+# ║  C# ANALOGY:                                                          ║
+# ║    Node    = Service method that reads & writes to DbContext           ║
+# ║    Tool    = Pure utility function (no DB access)                      ║
+# ║    Command = Utility function that ALSO dispatches a domain event      ║
+# ║                                                                       ║
+# ╚═══════════════════════════════════════════════════════════════════════╝
+
 # =====================================================================
 # 1. THE ARCHITECTURAL STATE DEFINITION (Topic 1 & 2)
 # =====================================================================
