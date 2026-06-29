@@ -30,7 +30,7 @@ XX-section-name/
 1. **Table of Contents** at the top — numbered table with anchor links and "What You'll Learn" column.
 2. **Key Definitions table** — `| Term | Quick Recall | Full Definition |` format. The "Quick Recall" column is the one-liner to say first in an interview.
 3. **Deep Dive sections** — each major topic gets `## Deep Dive: <Topic>`. Use tables, code blocks, and analogies.
-4. **C# Analogies** — wherever possible, map Python/LangChain concepts to C#/Java equivalents (e.g., `RunnableLambda` ↔ `Func<T>`, `RecordManager` ↔ EF Core Migrations, `.astream()` ↔ `IAsyncEnumerable`).
+4. **C# Analogies** — only include when the topic involves data structures or core programming concepts (e.g., graphs, state machines, linked lists). Skip C# mapping for LangGraph/agent workflow sections where the Python concepts have no meaningful C# equivalent.
 5. **Interview Q&A Anchors** — at the bottom, `## Interview Q&A Anchors` with `**Q:**` / `> **A:**` format. Each answer is 2-4 sentences, production-grade.
 6. **References** — at the very end, bullet list of relevant links.
 7. **Keep as one file** — don't split into subpages. Use the TOC for navigation. Ctrl+F across one file is faster for revision.
@@ -151,3 +151,5 @@ XX-section-name/
 | 10. Documentation Assistant | `10-documentation-assistant/` | ✅ Complete |
 | 11. GIST of LLMs & Prompt Engineering | `11-llms-and-prompt-engineering/` | ✅ Complete |
 | 12. LLM Apps in Production | `12-llm-apps-in-production/` | ✅ Complete |
+| 13. LangGraph Fundamentals | `13-langgraph-fundamentals/` | ✅ Complete |
+| 14. Reflection Agent | `14-reflection-agent/` | 🔄 In Progress |

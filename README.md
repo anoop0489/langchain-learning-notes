@@ -61,6 +61,11 @@ LangGraph orchestration runtime — prerequisites, state graphs, persistence, an
 * [16. Introduction to LangGraph (Autonomy Spectrum, Flow Engineering, Core Components)](./13-langgraph-fundamentals/16_LangGraph_Introduction.md)
 * [17. LangGraph Terminology (Definitions, Flow Diagrams, State Updates, HIL, Syntax Reference)](./13-langgraph-fundamentals/17_LangGraph_Terminology.md)
 
+### Section 14: Reflection Agent 🪞
+*Folder: [`/14-reflection-agent`](./14-reflection-agent)*
+Building a reflection agent that iteratively improves tweets through generate → critique → revise cycles.
+* [18. Reflection Agent (Generate/Reflect Loop, Self-Improvement, Prompt Tricks)](./14-reflection-agent/18_Reflection_Agent.md)
+
 ---
 
 ## 📖 Reference Guides
