@@ -102,6 +102,25 @@ The entire reflection agent is **less than 100 lines of code** because LangGraph
 
 ## 4. The Graph Structure
 
+### Mermaid Diagram (from Eden's project)
+
+```mermaid
+graph LR;
+    __start__([__start__]):::first
+    generate(generate)
+    reflect(reflect)
+    __end__([__end__]):::last
+    __start__ --> generate;
+    generate --> reflect;
+    reflect -.-> generate;
+    generate -.-> __end__;
+    classDef default fill:#f2f0ff,line-height:1.2
+    classDef first fill-opacity:0
+    classDef last fill:#bfb6fc
+```
+
+### ASCII Equivalent (for VS preview)
+
 ```
 		┌─────────┐
 		│  START  │

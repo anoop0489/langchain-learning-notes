@@ -7,7 +7,14 @@
 #   (critiques the tweet). The loop continues until 6+ messages accumulate,
 #   meaning roughly 3 generate/reflect cycles.
 #
-# Architecture:
+# Architecture (Mermaid — renders on GitHub):
+#   graph LR;
+#     __start__ --> generate;
+#     generate --> reflect;
+#     reflect -.-> generate;
+#     generate -.-> __end__;
+#
+# ASCII view:
 #   ┌──────────┐    ┌─────────┐
 #   │ GENERATE │───▶│ REFLECT │
 #   │ (writer) │◀───│ (critic)│
