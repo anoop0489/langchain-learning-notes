@@ -12,7 +12,7 @@
 | 2 | [Architecture Overview](#2-architecture-overview) | Three nodes, one cycle, tool-augmented revision |
 | 3 | [The Structured Output Trick](#3-the-structured-output-trick) | Forcing the LLM to produce answer + critique + queries in one call |
 | 4 | [The Graph Structure](#4-the-graph-structure) | Nodes, edges, state, stop condition |
-| 5 | [Advanced Prompt Engineering](#5-advanced-prompt-engineering) | How the prompt forces self-critique and improvement |
+| 5 | [Advanced Prompt Engineering](#5-advanced-prompt-engineering) | How the prompt forces self-critique and improvement, `MessagesPlaceholder` deep dive |
 | 6 | [The ToolNode Name-Matching Trick](#6-the-toolnode-name-matching-trick) | Why tools are named after Pydantic schemas |
 | 7 | [Comparison: Reflection vs Reflexion](#7-comparison-reflection-vs-reflexion) | Side-by-side with Section 14 |
 | 8 | [Code Walkthrough](#8-code-walkthrough) | Step-by-step through all 4 files |
@@ -33,6 +33,7 @@
 | **tool_choice** | Force a specific tool call | Parameter that tells the LLM "you MUST call this tool" — eliminates the option to respond with plain text. |
 | **ToolNode** | Prebuilt node that executes tools | LangGraph's built-in node that looks up tools by name and executes them, returning ToolMessages. |
 | **Actor Prompt** | Shared template for both chains | One prompt template with a variable `{first_instruction}` — instantiated differently for draft vs revise. |
+| **MessagesPlaceholder** | Injects full history into prompt | A prompt slot that gets replaced at runtime with the entire `messages` list from graph state — lets the LLM see the user question, prior answers, critiques, and search results. |
 | **Prompt Chaining** | Linear A → B → C | Each LLM call processes the output of the previous one. No branching, no cycles. |
 | **Parallelization** | Multiple LLM calls at once | Independent subtasks run simultaneously, results aggregated. |
 | **Routing** | LLM picks a branch | LLM classifies input and routes to specialized handlers. No cycles. |
@@ -193,13 +194,77 @@ Eden highlights that making the LLM **actually incorporate critique** is harder 
 Both chains use the same template with different `{first_instruction}`:
 
 ```python
-"""You are expert researcher.
+actor_prompt_template = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are expert researcher.
 Current time: {time}
 
 1. {first_instruction}
 2. Reflect and critique your answer. Be severe to maximize improvement.
-3. Recommend search queries to research information and improve your answer."""
+3. Recommend search queries to research information and improve your answer.""",
+        ),
+        MessagesPlaceholder(variable_name="messages"),  # ← ALL history goes here
+        ("system", "Answer the user's question above using the required format."),
+    ]
+).partial(
+    time=lambda: datetime.datetime.now().isoformat(),
+)
 ```
+
+### MessagesPlaceholder — The History Injection Point
+
+`MessagesPlaceholder` is **the most important piece** of this prompt template. Without it, the LLM would only see the system instructions — it would have no idea what the user asked, what it already answered, or what the search results said.
+
+**What it does:** At runtime, `MessagesPlaceholder(variable_name="messages")` gets replaced with the **entire `messages` list** from the graph state. That list grows with every step:
+
+```
+Step 1 (draft):
+  messages = [HumanMessage("Write about AI-Powered SOC...")]
+  → MessagesPlaceholder injects: [HumanMessage]
+
+Step 4 (first revise):
+  messages = [HumanMessage, AIMessage(draft), ToolMessage(search results)]
+  → MessagesPlaceholder injects: [HumanMessage, AIMessage, ToolMessage]
+
+Step 7 (second revise):
+  messages = [HumanMessage, AIMessage, ToolMessage, AIMessage(revision1), ToolMessage(new results)]
+  → MessagesPlaceholder injects: ALL 5 messages
+```
+
+**What the LLM actually sees** (expanded prompt on the first revise):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ SYSTEM: You are expert researcher. Current time: 2025-01-15... │
+│   1. Revise your previous answer using the new information...  │
+│   2. Reflect and critique your answer. Be severe...            │
+│   3. Recommend search queries...                               │
+├─────────────────────────────────────────────────────────────────┤
+│ HUMAN: Write about AI-Powered SOC...          ← from state     │
+│ AI: {answer: "...", reflection: {...}, ...}    ← draft output  │
+│ TOOL: [Tavily search results...]              ← search data    │
+├─────────────────────────────────────────────────────────────────┤
+│ SYSTEM: Answer the user's question above using the required    │
+│         format.                                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why this matters for the Reflexion pattern:**
+- The revisor sees its OWN previous answer (including the self-critique fields)
+- It sees the search results that address the critique's gaps
+- Each iteration adds more context, so each revision is better informed
+- Without `MessagesPlaceholder`, the prompt would just be system instructions with no history — the LLM would start from scratch every time
+
+**`MessagesPlaceholder` vs hardcoded `{input}`:**
+
+| Approach | What Gets Injected | Supports Multi-Turn? |
+|----------|-------------------|---------------------|
+| `("human", "{input}")` | A single string variable | ❌ One message only |
+| `MessagesPlaceholder("messages")` | An entire list of `BaseMessage` objects | ✅ Any number of `HumanMessage`, `AIMessage`, `ToolMessage` |
+
+In agentic graphs, you almost always need `MessagesPlaceholder` because the state grows with each node execution — and each node needs to see the full conversation to make informed decisions.
 
 ### First Responder Instruction
 ```
@@ -924,6 +989,9 @@ The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"Ans
 
 **Q: How does the Send API enable dynamic parallelism?**
 > **A:** The Send API lets you create worker nodes at runtime based on state content. Instead of defining a fixed number of parallel branches at graph construction time, you return `[Send("worker", input) for input in dynamic_list]` from a conditional edge. Each Send spawns an independent execution of the target node with its own input, and results are collected via a shared state key with a reducer.
+
+**Q: What is `MessagesPlaceholder` and why is it critical in agentic prompts?**
+> **A:** `MessagesPlaceholder` is a slot in a `ChatPromptTemplate` that gets replaced at runtime with the entire `messages` list from graph state. Unlike `("human", "{input}")` which injects a single string, `MessagesPlaceholder` injects a full list of `HumanMessage`, `AIMessage`, and `ToolMessage` objects. In agentic graphs this is essential — each node needs to see the complete conversation history (prior answers, critiques, search results) to make informed decisions. Without it, the LLM would start from scratch on every iteration.
 
 ---
 
