@@ -57,20 +57,21 @@ Reflexion (Section 15):   Answer → Critique → GOOGLE → Rewrite → Critiqu
 **RAG vs Reflexion — the exam analogy:**
 
 ```
-RAG       = Study first, then take the exam
-            (Retrieve documents → then answer)
-            You might study the wrong chapters
+RAG       = Study your notes first, then take the exam
+            (Retrieve from YOUR knowledge base → then answer)
+            One retrieval pass — if your question is vague, you might
+            miss relevant chunks buried deeper in your own corpus
 
 Reflexion = Take the exam with whatever you know, check your answers,
             study ONLY what you got wrong, retake — repeat until you pass
-            (Answer → critique → search just the gaps → rewrite → repeat)
+            (Answer → critique → targeted search for gaps → rewrite → repeat)
             Each attempt is better because you know exactly what to fix
 ```
 
 | | RAG | Reflexion |
 |--|-----|-----------|
 | **When** you search | BEFORE answering | AFTER answering + critiquing |
-| **What** you search | Everything (broad, based on user question) | Only what the critique said is wrong (targeted) |
+| **What** you search | Your ingested corpus (broad similarity match on the question) | Only what the critique said is wrong (targeted queries) |
 | **Who** decides what to search | The user's question | The LLM itself (it knows what it got wrong) |
 | **How many passes** | One shot | Multiple — each pass catches new errors |
 | **Best when** | You know nothing about the topic | You know most of it but need to verify |
@@ -1376,7 +1377,7 @@ The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"Ans
 > **A:** Use Reflexion when factual accuracy matters — research articles, technical documentation, reports that need citations. Basic reflection is sufficient for style/quality improvements (tweets, emails) where external data isn't needed. Reflexion costs more (tool calls + more LLM tokens) but produces grounded, verifiable output.
 
 **Q: How does Reflexion differ from RAG?**
-> **A:** RAG retrieves first, then answers — like studying before an exam. Reflexion answers first, critiques itself, then retrieves only what it got wrong — like taking an exam, checking your answers, studying just the gaps, and retaking. RAG search is broad (based on the user's question). Reflexion search is targeted (based on the LLM's own critique). Use RAG when you know nothing; use Reflexion when the LLM knows most of it but needs to verify. You can combine both — RAG for the first draft, Reflexion to improve iteratively.
+> **A:** RAG retrieves from your ingested knowledge base first, then answers — like studying your notes before an exam. Reflexion answers first with parametric knowledge, critiques itself, then does targeted retrieval for only the gaps it identified — like taking the exam, checking your answers, studying just what you got wrong, and retaking. RAG does one broad retrieval pass based on the user's question; Reflexion retrieval is narrow and driven by the LLM's own critique. You can combine both — RAG for the first draft, Reflexion to iterate and improve.
 
 **Q: What are the main LangGraph workflow patterns?**
 > **A:** Five core patterns: (1) Prompt chaining — linear sequence of LLM calls. (2) Parallelization — multiple independent calls at once. (3) Routing — LLM classifies input and routes to specialized handlers. (4) Orchestrator-worker — one LLM plans subtasks, spawns workers dynamically via Send API. (5) Evaluator-optimizer — generate/evaluate cycle until quality threshold met. Agents add tool use and cycles on top of these.
