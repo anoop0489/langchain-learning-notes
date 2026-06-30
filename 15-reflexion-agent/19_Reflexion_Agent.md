@@ -280,6 +280,100 @@ In agentic graphs, you almost always need `MessagesPlaceholder` because the stat
 - Make SURE it is not more than 250 words."
 ```
 
+### How the Two Chains Are Built — The `.partial()` → `|` → `.bind_tools()` Pipeline
+
+This is the most confusing part of the code if you come back later. Here's exactly what each piece does:
+
+**Chain 1 — `first_responder` (draft):**
+
+```python
+# Step A: Take the shared template and fill in {first_instruction}
+first_responder_prompt_template = actor_prompt_template.partial(
+    first_instruction="Provide a detailed ~250 word answer."
+)
+
+# Step B: Pipe the prompt into the LLM, forcing it to return AnswerQuestion schema
+first_responder = first_responder_prompt_template | llm.bind_tools(
+    tools=[AnswerQuestion], tool_choice="AnswerQuestion"
+)
+```
+
+**Chain 2 — `revisor` (revise):**
+
+```python
+# Same thing, but with different instruction and different schema
+revisor = actor_prompt_template.partial(
+    first_instruction=revise_instructions        # ← different instruction
+) | llm.bind_tools(tools=[ReviseAnswer], tool_choice="ReviseAnswer")  # ← different form
+```
+
+**Breaking it down piece by piece:**
+
+```
+actor_prompt_template          ← The shared template with {first_instruction} and {time} slots
+        │
+        ▼
+   .partial(first_instruction="...")   ← Fill in {first_instruction} ahead of time.
+        │                                 Now the template only needs {messages} at runtime.
+        │                                 Think of it like setting a DEFAULT value.
+        ▼
+        |                              ← The PIPE operator (LCEL). Means "pass the output
+        │                                 of the left side as input to the right side."
+        │                                 prompt output → LLM input. That's it.
+        ▼
+   llm.bind_tools(                     ← Tell the LLM "here are the tools you can call"
+       tools=[AnswerQuestion],            These are Pydantic models, not actual functions.
+       tool_choice="AnswerQuestion"    ← "You MUST call this tool. No freeform text."
+   )
+```
+
+**What `.partial()` actually does — a simple analogy:**
+
+Think of the template as a form letter with blanks:
+
+```
+Dear {name},
+Your order for {product} ships on {date}.
+```
+
+`.partial(name="John")` fills in ONE blank ahead of time:
+
+```
+Dear John,
+Your order for {product} ships on {date}.
+```
+
+Now when you send the letter, you only need to fill in `{product}` and `{date}`.
+
+In our case, `actor_prompt_template` has three blanks: `{time}`, `{first_instruction}`, and `{messages}`:
+- `{time}` is filled with `.partial(time=lambda: ...)` when the template is created
+- `{first_instruction}` is filled with `.partial(first_instruction="...")` for each chain
+- `{messages}` is filled at **runtime** when the chain is invoked with graph state
+
+**Side-by-side — both chains are 90% identical:**
+
+| Part | `first_responder` | `revisor` |
+|------|-------------------|-----------|
+| Base template | `actor_prompt_template` | `actor_prompt_template` (same) |
+| `{time}` | Auto-filled (same) | Auto-filled (same) |
+| `{first_instruction}` | "Provide a detailed ~250 word answer." | "Revise your previous answer..." (with citation rules) |
+| `{messages}` | Filled at runtime (same) | Filled at runtime (same) |
+| `bind_tools` schema | `AnswerQuestion` (answer + critique + queries) | `ReviseAnswer` (same + references) |
+| `tool_choice` | `"AnswerQuestion"` | `"ReviseAnswer"` |
+
+**The only differences:** the instruction text and the output schema. Everything else is shared. That's why Eden uses `.partial()` — write the template once, customize it twice.
+
+**What the `|` (pipe) operator does at runtime:**
+
+```
+chain.invoke({"messages": [HumanMessage("Write about AI SOC...")]})
+
+Step 1: Prompt template fills in {messages} → produces a list of ChatMessages
+Step 2: | pipes those ChatMessages into the LLM
+Step 3: LLM is forced to return AnswerQuestion/ReviseAnswer structured output
+Step 4: Result = AIMessage with tool_calls containing the filled-in schema
+```
+
 ### Why "Be severe to maximize improvement"?
 
 Without this directive, the LLM tends to say "great answer, no issues!" — which defeats the purpose of self-critique. The prompt explicitly instructs severity to force meaningful feedback.
