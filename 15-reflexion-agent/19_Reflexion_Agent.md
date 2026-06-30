@@ -9,16 +9,17 @@
 | # | Section | What You'll Learn |
 |---|---------|-------------------|
 | 1 | [What Is a Reflexion Agent?](#1-what-is-a-reflexion-agent) | How it extends basic reflection with tools and structured output |
-| 2 | [Architecture Overview](#2-architecture-overview) | Three nodes, one cycle, tool-augmented revision |
-| 3 | [The Structured Output Trick](#3-the-structured-output-trick) | Forcing the LLM to produce answer + critique + queries in one call |
-| 4 | [The Graph Structure](#4-the-graph-structure) | Nodes, edges, state, stop condition |
-| 5 | [Advanced Prompt Engineering](#5-advanced-prompt-engineering) | How the prompt forces self-critique and improvement, `MessagesPlaceholder` deep dive |
-| 6 | [The ToolNode Name-Matching Trick](#6-the-toolnode-name-matching-trick) | Why tools are named after Pydantic schemas |
-| 7 | [Comparison: Reflection vs Reflexion](#7-comparison-reflection-vs-reflexion) | Side-by-side with Section 14 |
-| 8 | [Code Walkthrough](#8-code-walkthrough) | Step-by-step through all 4 files |
-| 9 | [LangGraph Workflow Patterns](#9-langgraph-workflow-patterns) | Prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer |
-| 10 | [ToolNode Deep Dive](#10-toolnode-deep-dive) | How ToolNode works, input/output formats, error handling, ToolRuntime |
-| 11 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
+| 2 | [How It Actually Works](#2-how-it-actually-works--plain-english-walkthrough) | Plain English walkthrough, naming confusion cleared up, full step-by-step |
+| 3 | [Architecture Overview](#3-architecture-overview) | Three nodes, one cycle, tool-augmented revision |
+| 4 | [The Structured Output Trick](#4-the-structured-output-trick) | Forcing the LLM to produce answer + critique + queries in one call |
+| 5 | [The Graph Structure](#5-the-graph-structure) | Nodes, edges, state, stop condition |
+| 6 | [Advanced Prompt Engineering](#6-advanced-prompt-engineering) | How the prompt forces self-critique and improvement, `MessagesPlaceholder` deep dive |
+| 7 | [The ToolNode Name-Matching Trick](#7-the-toolnode-name-matching-trick) | Why tools are named after Pydantic schemas |
+| 8 | [Comparison: Reflection vs Reflexion](#8-comparison-reflection-vs-reflexion) | Side-by-side with Section 14 |
+| 9 | [Code Walkthrough](#9-code-walkthrough) | Step-by-step through all 4 files |
+| 10 | [LangGraph Workflow Patterns](#10-langgraph-workflow-patterns) | Prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer |
+| 11 | [ToolNode Deep Dive](#11-toolnode-deep-dive) | How ToolNode works, input/output formats, error handling, ToolRuntime |
+| 12 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
 
 ---
 
@@ -71,7 +72,220 @@ The Reflexion agent extends the basic reflection pattern (Section 14) with **thr
 
 ---
 
-## 2. Architecture Overview
+## 2. How It Actually Works — Plain English Walkthrough
+
+> ⚠️ **Read this section first.** The rest of the doc goes deep into code and techniques. This section explains what actually happens at each step, with no code jargon.
+
+### The Naming Confusion — Cleared Up
+
+Eden used different names at different layers for the same step. Here's the cheat sheet:
+
+```
+What it DOES               Graph Node Name    Python Function    Chain (prompt+LLM)
+─────────────────────────  ─────────────────  ─────────────────  ──────────────────
+Writes the first answer    "draft"            draft_node()       first_responder
+Googles the search terms   "execute_tools"    (ToolNode)         (Tavily search)
+Rewrites with real data    "revise"           revise_node()      revisor
+```
+
+**Three names, three layers, same step.** When this doc says "draft node" or "first_responder" or "draft_node()" — it's all the same thing: the step that writes the first answer.
+
+### What `tool_choice` Really Means
+
+This is the most misleading name in the whole project:
+
+```
+tool_choice="AnswerQuestion"
+
+❌ Does NOT mean: "Call a tool called AnswerQuestion"
+✅ Actually means: "Return your answer as JSON matching this form"
+```
+
+The word "tool" is misleading. It's just a trick to force the LLM to return structured JSON instead of freeform text. Think of it as **"forced JSON format"**, not "call a tool."
+
+### The Full Walkthrough — What Happens When You Run `main.py`
+
+**You ask:** "Write about AI-Powered SOC startups that raised capital."
+
+---
+
+**Step 1 — DRAFT NODE (LLM writes, no internet)**
+
+The LLM uses ONLY its training data. It has no internet access. It produces ONE JSON response with three parts:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ What the LLM returns (ONE call, ONE response):              │
+│                                                             │
+│ answer:                                                     │
+│   "AI-Powered Security Operations Centers (SOC) represent   │
+│    a growing market. Companies like SentinelOne and         │
+│    CrowdStrike use AI for threat detection..."              │
+│                                                             │
+│ reflection:                                                 │
+│   missing: "No specific funding amounts. No mention of      │
+│            early-stage startups. Missing market size data."  │
+│   superfluous: "Too much general background about           │
+│                 traditional SOCs."                           │
+│                                                             │
+│ search_queries:      ← JUST TEXT. Not actual searches.      │
+│   - "AI SOC startups 2024 funding rounds"                   │
+│   - "autonomous security operations center market size"     │
+│   - "AI-powered SOC startup seed series A 2024"             │
+│                                                             │
+│ ⚠️ The LLM did NOT Google anything.                        │
+│    It just wrote down what it WOULD search for.             │
+│    These are plain strings sitting in the JSON.             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**State after Step 1:** `[HumanMessage, AIMessage(answer + critique + search strings)]`
+
+---
+
+**Step 2 — EXECUTE_TOOLS NODE (Tavily actually searches the internet)**
+
+A completely separate node takes those search query strings and sends them to Tavily (a search engine API). The LLM is NOT involved here. This is pure Python code calling an API.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Input: ["AI SOC startups 2024 funding rounds",              │
+│         "autonomous SOC market size",                       │
+│         "AI-powered SOC startup seed series A 2024"]        │
+│                                                             │
+│ Tavily searches the real internet and returns:              │
+│                                                             │
+│ Result 1: "Torq raised $70M Series C for AI SOC..."        │
+│           URL: https://techcrunch.com/...                   │
+│                                                             │
+│ Result 2: "AI security market expected to reach $38B..."    │
+│           URL: https://marketsandmarkets.com/...            │
+│                                                             │
+│ Result 3: "Intezer raised $33M for autonomous SOC..."       │
+│           URL: https://venturebeat.com/...                  │
+│                                                             │
+│ ✅ THIS is where the internet is used.                     │
+│    Real URLs. Real data. Real numbers.                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**State after Step 2:** `[HumanMessage, AIMessage(draft), ToolMessage(real search results)]`
+
+---
+
+**Step 3 — REVISE NODE (LLM rewrites using real data)**
+
+Now the LLM sees EVERYTHING: the original question, its first draft, its own critique ("I'm missing funding data"), AND the real search results. It rewrites:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ What the LLM sees (via MessagesPlaceholder):                │
+│                                                             │
+│   1. Your question: "Write about AI-Powered SOC..."         │
+│   2. Its own draft: "AI-Powered SOC represents..."          │
+│   3. Its own critique: "Missing funding amounts"            │
+│   4. Real search results: "Torq $70M, Intezer $33M..."     │
+│                                                             │
+│ What it returns (BETTER version):                           │
+│                                                             │
+│ answer:                                                     │
+│   "AI-Powered SOCs are transforming cybersecurity.          │
+│    Torq raised $70M Series C [1], Intezer secured           │
+│    $33M [2], and the market is projected to reach            │
+│    $38B by 2028 [3]..."                                     │
+│                                                             │
+│ reflection:                                                 │
+│   missing: "Could add comparison of detection rates.        │
+│            No mention of open-source alternatives."         │
+│   superfluous: "Market size paragraph is too long."         │
+│                                                             │
+│ search_queries:                                             │
+│   - "AI vs traditional SOC detection rate comparison"       │
+│   - "open source AI security tools 2024"                    │
+│                                                             │
+│ references:         ← NEW field (only in ReviseAnswer)      │
+│   - "[1] https://techcrunch.com/torq-70m-series-c"          │
+│   - "[2] https://venturebeat.com/intezer-33m"               │
+│   - "[3] https://marketsandmarkets.com/ai-security"         │
+│                                                             │
+│ ✅ Now the answer has real data AND citations.              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**State after Step 3:** `[HumanMessage, AIMessage(draft), ToolMessage(results), AIMessage(revision1)]`
+
+---
+
+**Step 4 — event_loop checks: should we keep going?**
+
+```
+Count ToolMessages in state = 1
+MAX_ITERATIONS = 2
+1 ≤ 2 → YES, keep going → route back to EXECUTE_TOOLS
+```
+
+---
+
+**Step 5 — EXECUTE_TOOLS again (new searches from the revision)**
+
+Takes the NEW search queries from Step 3 ("AI vs traditional SOC detection rate", "open source AI security tools 2024") and Googles them. Returns fresh results.
+
+---
+
+**Step 6 — REVISE again (even better answer)**
+
+LLM now sees: original question + draft + first search results + first revision + second search results. Writes an even better answer with more citations.
+
+---
+
+**Step 7 — event_loop checks again**
+
+```
+Count ToolMessages in state = 2
+2 ≤ 2 → YES, one more round
+```
+
+---
+
+**Step 8 — EXECUTE_TOOLS one more time**
+
+---
+
+**Step 9 — REVISE final time (best answer yet)**
+
+---
+
+**Step 10 — event_loop checks final time**
+
+```
+Count ToolMessages in state = 3
+3 > 2 → STOP → route to END ✅
+```
+
+---
+
+### Summary: The Three Roles
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  DRAFT / REVISE  │     │  EXECUTE_TOOLS   │     │    event_loop    │
+│                  │     │                  │     │                  │
+│  WHO: The LLM    │     │  WHO: Tavily API │     │  WHO: Python     │
+│                  │     │                  │     │       code       │
+│  DOES: Writes    │     │  DOES: Searches  │     │                  │
+│  text, critiques │     │  the internet    │     │  DOES: Counts    │
+│  itself, suggests│     │  for real data   │     │  iterations,     │
+│  what to Google  │     │                  │     │  decides if we   │
+│                  │     │  NO LLM here.    │     │  keep going or   │
+│  NO internet     │     │  Just an API     │     │  stop            │
+│  access here.    │     │  call.           │     │                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+     Writes text           Gets real data         Controls the loop
+```
+
+---
+
+## 3. Architecture Overview
 
 ### Mermaid Diagram (from Eden's project)
 
@@ -121,7 +335,7 @@ graph LR;
 
 ---
 
-## 3. The Structured Output Trick
+## 4. The Structured Output Trick
 
 The most powerful technique in this agent: **the LLM is forced to self-critique as part of its output format**.
 
@@ -149,7 +363,7 @@ class ReviseAnswer(AnswerQuestion):
 
 ---
 
-## 4. The Graph Structure
+## 5. The Graph Structure
 
 ### State
 
@@ -185,7 +399,7 @@ def event_loop(state: MessagesState):
 
 ---
 
-## 5. Advanced Prompt Engineering
+## 6. Advanced Prompt Engineering
 
 Eden highlights that making the LLM **actually incorporate critique** is harder than generating the critique. Key techniques:
 
@@ -380,7 +594,7 @@ Without this directive, the LLM tends to say "great answer, no issues!" — whic
 
 ---
 
-## 6. The ToolNode Name-Matching Trick
+## 7. The ToolNode Name-Matching Trick
 
 The most subtle implementation detail:
 
@@ -403,7 +617,7 @@ When you use `tool_choice="AnswerQuestion"`, the LLM's response has:
 
 ---
 
-## 7. Comparison: Reflection vs Reflexion
+## 8. Comparison: Reflection vs Reflexion
 
 | Aspect | Section 14 (Reflection) | Section 15 (Reflexion) |
 |--------|------------------------|------------------------|
@@ -420,7 +634,7 @@ When you use `tool_choice="AnswerQuestion"`, the LLM's response has:
 
 ---
 
-## 8. Code Walkthrough
+## 9. Code Walkthrough
 
 ### File Structure
 
@@ -472,7 +686,7 @@ Step 11: event_loop checks ToolMessage count (3 > 2) → route to END ✅
 
 ---
 
-## 9. LangGraph Workflow Patterns
+## 10. LangGraph Workflow Patterns
 
 > Eden discussed these official LangGraph patterns during this section to show where the Reflexion agent fits in the broader landscape. These are from the [official LangGraph docs](https://langchain-ai.github.io/langgraph/).
 
@@ -823,7 +1037,7 @@ The Reflexion agent is a **combination** of:
 
 ---
 
-## 10. ToolNode Deep Dive
+## 11. ToolNode Deep Dive
 
 > `ToolNode` is a prebuilt LangGraph node that handles tool execution. Eden uses it in this project and the concepts apply to all LangGraph agents.
 
