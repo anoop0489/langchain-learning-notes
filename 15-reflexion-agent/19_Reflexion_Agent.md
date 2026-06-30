@@ -16,7 +16,9 @@
 | 6 | [The ToolNode Name-Matching Trick](#6-the-toolnode-name-matching-trick) | Why tools are named after Pydantic schemas |
 | 7 | [Comparison: Reflection vs Reflexion](#7-comparison-reflection-vs-reflexion) | Side-by-side with Section 14 |
 | 8 | [Code Walkthrough](#8-code-walkthrough) | Step-by-step through all 4 files |
-| 9 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
+| 9 | [LangGraph Workflow Patterns](#9-langgraph-workflow-patterns) | Prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer |
+| 10 | [ToolNode Deep Dive](#10-toolnode-deep-dive) | How ToolNode works, input/output formats, error handling, ToolRuntime |
+| 11 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
 
 ---
 
@@ -31,6 +33,13 @@
 | **tool_choice** | Force a specific tool call | Parameter that tells the LLM "you MUST call this tool" — eliminates the option to respond with plain text. |
 | **ToolNode** | Prebuilt node that executes tools | LangGraph's built-in node that looks up tools by name and executes them, returning ToolMessages. |
 | **Actor Prompt** | Shared template for both chains | One prompt template with a variable `{first_instruction}` — instantiated differently for draft vs revise. |
+| **Prompt Chaining** | Linear A → B → C | Each LLM call processes the output of the previous one. No branching, no cycles. |
+| **Parallelization** | Multiple LLM calls at once | Independent subtasks run simultaneously, results aggregated. |
+| **Routing** | LLM picks a branch | LLM classifies input and routes to specialized handlers. No cycles. |
+| **Orchestrator-Worker** | Plan → spawn → synthesize | One LLM plans subtasks, dynamically spawns workers via Send API, collects results. |
+| **Evaluator-Optimizer** | Generate ↔ Evaluate loop | One LLM generates, another evaluates. Cycle until quality threshold met. |
+| **Send API** | Dynamic worker spawning | LangGraph API that creates node executions at runtime based on state content. |
+| **ToolRuntime** | State injection for tools | Lets tools access graph state and run-scoped context that the LLM didn't generate. |
 
 ---
 
@@ -304,6 +313,179 @@ Step 11: event_loop checks ToolMessage count (3 > 2) → route to END ✅
 
 ---
 
+## 9. LangGraph Workflow Patterns
+
+> Eden discussed these official LangGraph patterns during this section to show where the Reflexion agent fits in the broader landscape. These are from the [official LangGraph docs](https://langchain-ai.github.io/langgraph/).
+
+### Pattern Taxonomy
+
+| Pattern | Flow Shape | Cycles? | LLM Decides Flow? | Our Examples |
+|---------|-----------|---------|-------------------|------|
+| **Prompt Chaining** | A → B → C (linear) | ❌ | ❌ | RAG pipeline (Section 9) |
+| **Parallelization** | START → [A, B, C] → Aggregator → END | ❌ | ❌ | — |
+| **Routing** | Router → one-of-many paths → END | ❌ | ✅ (picks branch) | LangChain routers |
+| **Orchestrator-Worker** | Orchestrator → spawn N workers → Synthesizer | ❌ | ✅ (plans subtasks) | — |
+| **Evaluator-Optimizer** | Generate ←→ Evaluate (cycle) | ✅ | ✅ (decides quality) | Reflection Agent (Section 14) |
+| **Agent (ReAct)** | Think → Act → Observe (cycle) | ✅ | ✅ (picks tools) | ReAct Agent (Section 13) |
+| **Reflexion** | Draft → Search → Revise (cycle) | ✅ | ✅ (generates queries) | This section |
+
+### Prompt Chaining
+
+Each LLM call processes the output of the previous call. No branching, no cycles.
+
+```
+START → generate_joke → [check_punchline] → improve_joke → polish_joke → END
+                              │
+                              └─── (pass) ──→ END
+```
+
+**When to use:** Well-defined tasks with verifiable intermediate steps (translation, content verification).
+
+### Parallelization
+
+Multiple LLM calls run simultaneously, results aggregated.
+
+```
+         ┌─── call_llm_1 (joke) ───┐
+START ───┼─── call_llm_2 (story) ──┼──→ aggregator → END
+         └─── call_llm_3 (poem) ───┘
+```
+
+**When to use:** Independent subtasks that can run concurrently (speed), or running the same task multiple times (confidence).
+
+**LangGraph feature:** Multiple edges from START to different nodes automatically run in parallel.
+
+### Routing
+
+LLM classifies input and routes to specialized handlers. No cycles.
+
+```
+START → router_llm → {story: llm_1, joke: llm_2, poem: llm_3} → END
+```
+
+**Key technique:** Use `with_structured_output(Route)` to get a Pydantic enum from the LLM, then route based on the field value.
+
+### Orchestrator-Worker
+
+One LLM plans subtasks, spawns workers dynamically, synthesizes results.
+
+```
+START → orchestrator (plans sections) → [Send("worker", section) for each] → synthesizer → END
+```
+
+**Key LangGraph feature:** The `Send` API lets you dynamically create worker nodes at runtime — you don't need to know how many workers you'll need at graph construction time.
+
+```python
+from langgraph.types import Send
+
+def assign_workers(state):
+    return [Send("llm_call", {"section": s}) for s in state["sections"]]
+```
+
+### Evaluator-Optimizer
+
+Generate → evaluate → (if not good enough) → generate again. Exactly what our Reflection Agent does.
+
+```
+START → generator → evaluator → {Accepted: END, Rejected: generator}
+```
+
+**When to use:** Tasks with clear success criteria that need iteration (translation quality, code correctness, joke humor).
+
+### Where Reflexion Fits
+
+The Reflexion agent is a **combination** of:
+- **Evaluator-Optimizer** (self-critique drives revision)
+- **Agent** (uses tools to fetch data)
+- **Prompt Chaining** (structured progression from draft to final)
+
+---
+
+## 10. ToolNode Deep Dive
+
+> `ToolNode` is a prebuilt LangGraph node that handles tool execution. Eden uses it in this project and the concepts apply to all LangGraph agents.
+
+### What ToolNode Does
+
+| Input | Process | Output |
+|-------|---------|--------|
+| `AIMessage` with `tool_calls` | Looks up tool by name → invokes with args | `ToolMessage(content=result)` |
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Name-based routing** | Matches `tool_call.name` to registered tool names |
+| **Parallel execution** | If AIMessage has multiple tool_calls, executes all in parallel |
+| **Error handling** | Configurable: catch errors and return them as ToolMessage, or propagate |
+| **State injection** | Via `ToolRuntime` — tools can access graph state and run-scoped context |
+
+### Input Formats
+
+```python
+# 1. Graph state (most common in LangGraph)
+{"messages": [AIMessage(tool_calls=[{"name": "search", "args": {...}, "id": "abc"}])]}
+
+# 2. Message list
+[AIMessage(tool_calls=[...])]
+
+# 3. Direct tool calls (for testing)
+[{"name": "search", "args": {"query": "test"}, "id": "1", "type": "tool_call"}]
+```
+
+### Error Handling Options
+
+```python
+# Default: catches invocation errors, propagates execution errors
+ToolNode(tools)
+
+# Catch ALL errors, return as ToolMessage
+ToolNode(tools, handle_tool_errors=True)
+
+# Custom error message
+ToolNode(tools, handle_tool_errors="Something went wrong, please try again.")
+
+# Custom handler function
+ToolNode(tools, handle_tool_errors=lambda e: f"Error: {str(e)}")
+
+# Disable error handling (exceptions propagate)
+ToolNode(tools, handle_tool_errors=False)
+```
+
+### ToolRuntime — Accessing State From Tools
+
+Tools normally only receive the args the LLM generates. To access **graph state** or **run-scoped context**, use `ToolRuntime`:
+
+```python
+from langchain.tools import ToolRuntime, tool
+
+class State(MessagesState):
+    user_id: str
+
+@tool
+def get_user_info(runtime: ToolRuntime[None, State]) -> str:
+    """Look up user information."""
+    # Access graph state that the LLM didn't generate
+    user_id = runtime.state["user_id"]
+    return f"User {user_id}"
+```
+
+**Important:** Tools can only access state values passed to the ToolNode. When ToolNode is a direct graph node, it receives the full state. If you invoke it manually from another node, pass the full state explicitly.
+
+### How It's Used in This Project
+
+```python
+# In tool_executor.py — tools named to match LLM's tool_choice
+execute_tools = ToolNode([
+    StructuredTool.from_function(run_queries, name="AnswerQuestion"),
+    StructuredTool.from_function(run_queries, name="ReviseAnswer"),
+])
+```
+
+The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"AnswerQuestion"` → executes `run_queries` → returns ToolMessage with search results.
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What is a Reflexion agent and how does it differ from basic reflection?**
@@ -321,6 +503,15 @@ Step 11: event_loop checks ToolMessage count (3 > 2) → route to END ✅
 **Q: When would you use Reflexion over basic Reflection?**
 > **A:** Use Reflexion when factual accuracy matters — research articles, technical documentation, reports that need citations. Basic reflection is sufficient for style/quality improvements (tweets, emails) where external data isn't needed. Reflexion costs more (tool calls + more LLM tokens) but produces grounded, verifiable output.
 
+**Q: What are the main LangGraph workflow patterns?**
+> **A:** Five core patterns: (1) Prompt chaining — linear sequence of LLM calls. (2) Parallelization — multiple independent calls at once. (3) Routing — LLM classifies input and routes to specialized handlers. (4) Orchestrator-worker — one LLM plans subtasks, spawns workers dynamically via Send API. (5) Evaluator-optimizer — generate/evaluate cycle until quality threshold met. Agents add tool use and cycles on top of these.
+
+**Q: What is ToolNode and when would you use it vs writing your own tool execution?**
+> **A:** ToolNode is a prebuilt LangGraph node that handles tool execution: name-based routing, parallel execution, error handling, and state injection via ToolRuntime. Use it when you want standard tool execution behavior. Write your own when you need custom routing logic, specialized error recovery, or non-standard argument transformation.
+
+**Q: How does the Send API enable dynamic parallelism?**
+> **A:** The Send API lets you create worker nodes at runtime based on state content. Instead of defining a fixed number of parallel branches at graph construction time, you return `[Send("worker", input) for input in dynamic_list]` from a conditional edge. Each Send spawns an independent execution of the target node with its own input, and results are collected via a shared state key with a reducer.
+
 ---
 
 ## Runnable Scripts
@@ -336,3 +527,5 @@ Step 11: event_loop checks ToolMessage count (3 > 2) → route to END ✅
 - [LangChain Blog — Reflection Agents](https://www.langchain.com/blog/reflection-agents) — LangChain team's implementation guide
 - [LangGraph Reflexion Tutorial](https://langchain-ai.github.io/langgraph/tutorials/reflexion/reflexion/) — Official LangGraph tutorial
 - [Tavily Search](https://tavily.com/) — Search engine optimized for LLM applications
+- [LangGraph Workflows and Agents Guide](https://langchain-ai.github.io/langgraph/concepts/workflows-agents/) — Official patterns documentation (prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer)
+- [ToolNode API Reference](https://reference.langchain.com/python/langgraph.prebuilt/tool_node/ToolNode) — Prebuilt node for tool execution
