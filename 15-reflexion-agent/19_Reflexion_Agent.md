@@ -70,6 +70,8 @@ Reflexion = Take the exam with whatever you know, check your answers,
 
 | | RAG | Reflexion |
 |--|-----|-----------|
+| **Setup cost** | High — ingest documents into vector store ONCE upfront | None — searches on-demand each iteration |
+| **Data source** | Your pre-ingested corpus (vector DB) | Live/external sources (web, APIs, DBs) — whatever the tool queries |
 | **When** you search | BEFORE answering | AFTER answering + critiquing |
 | **What** you search | Your ingested corpus (broad similarity match on the question) | Only what the critique said is wrong (targeted queries) |
 | **Who** decides what to search | The user's question | The LLM itself (it knows what it got wrong) |
