@@ -152,4 +152,5 @@ XX-section-name/
 | 11. GIST of LLMs & Prompt Engineering | `11-llms-and-prompt-engineering/` | ✅ Complete |
 | 12. LLM Apps in Production | `12-llm-apps-in-production/` | ✅ Complete |
 | 13. LangGraph Fundamentals | `13-langgraph-fundamentals/` | ✅ Complete |
-| 14. Reflection Agent | `14-reflection-agent/` | 🔄 In Progress |
+| 14. Reflection Agent | `14-reflection-agent/` | ✅ Complete |
+| 15. Reflexion Agent | `15-reflexion-agent/` | 🔄 In Progress |

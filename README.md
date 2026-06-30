@@ -66,6 +66,11 @@ LangGraph orchestration runtime — prerequisites, state graphs, persistence, an
 Building a reflection agent that iteratively improves tweets through generate → critique → revise cycles.
 * [18. Reflection Agent (Generate/Reflect Loop, Self-Improvement, Prompt Tricks)](./14-reflection-agent/18_Reflection_Agent.md)
 
+### Section 15: Reflexion Agent 🔬
+*Folder: [`/15-reflexion-agent`](./15-reflexion-agent)*
+Tool-augmented self-improvement — extending reflection with Tavily search, structured output, and citations.
+* [19. Reflexion Agent (Tool-Augmented Self-Critique, Structured Output, Citations)](./15-reflexion-agent/19_Reflexion_Agent.md)
+
 ---
 
 ## 📖 Reference Guides
