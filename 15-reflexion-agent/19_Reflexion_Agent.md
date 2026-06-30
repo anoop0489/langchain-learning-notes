@@ -4,6 +4,54 @@
 
 ---
 
+## The Core Idea (from the Reflexion paper)
+
+> **Remember this, forget the rest.** The code is just plumbing. AI writes the code. You need to remember the TECHNIQUE.
+
+**Paper:** [Reflexion: Language Agents with Verbal Reinforcement Learning (Shinn et al., 2023)](https://arxiv.org/pdf/2303.11366) — Northeastern, MIT, Princeton.
+
+**The technique in one sentence:**
+
+> "Write an answer, be honest about what's wrong with it, Google the gaps, rewrite — repeat."
+
+**The technique in five steps:**
+
+```
+Step 1:  ANSWER     →  Write your best answer using what you know
+Step 2:  CRITIQUE   →  Be brutally honest — what's wrong? what's missing?
+Step 3:  RESEARCH   →  Search the internet for what you got wrong
+Step 4:  REWRITE    →  Rewrite using the real data + add citations
+Step 5:  REPEAT     →  Go back to Step 2 until good enough
+```
+
+**Why it works:**
+- Step 2 forces **self-awareness** — the LLM can't pretend its answer is perfect
+- Step 3 **grounds** the improvement in real data — not just rewording the same wrong info
+- Step 4 adds **citations** — the answer becomes verifiable, not just confident-sounding
+
+**Reflexion vs Reflection (the difference):**
+
+```
+Reflection (Section 14):  Answer → Critique → Rewrite → Critique → Rewrite
+                          (no internet, just the LLM talking to itself)
+
+Reflexion (Section 15):   Answer → Critique → GOOGLE → Rewrite → Critique → GOOGLE → Rewrite
+                          (internet fills the gaps the critique identified)
+```
+
+**The concept vs the implementation:**
+
+| The CONCEPT (remember this) | The IMPLEMENTATION (AI writes this) |
+|-----------------------------|-------------------------------------|
+| Answer + critique yourself | Pydantic schemas, `tool_choice`, `bind_tools` |
+| Google the gaps | ToolNode, `StructuredTool.from_function`, name matching |
+| Rewrite with real data | `MessagesPlaceholder`, `.partial()`, LCEL pipe |
+| Repeat until done | Conditional edges, `ToolMessage` counting |
+
+The left column is the technique you need for interviews and system design. The right column is LangChain-specific plumbing that changes with every library version.
+
+---
+
 ## Table of Contents
 
 | # | Section | What You'll Learn |
