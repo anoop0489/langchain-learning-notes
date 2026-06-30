@@ -19,7 +19,7 @@
 ```
 Step 1:  ANSWER     →  Write your best answer using what you know
 Step 2:  CRITIQUE   →  Be brutally honest — what's wrong? what's missing?
-Step 3:  RESEARCH   →  Search the internet for what you got wrong
+Step 3:  RESEARCH   →  Use any tool to get real data about what you got wrong
 Step 4:  REWRITE    →  Rewrite using the real data + add citations
 Step 5:  REPEAT     →  Go back to Step 2 until good enough
 ```
@@ -28,6 +28,21 @@ Step 5:  REPEAT     →  Go back to Step 2 until good enough
 - Step 2 forces **self-awareness** — the LLM can't pretend its answer is perfect
 - Step 3 **grounds** the improvement in real data — not just rewording the same wrong info
 - Step 4 adds **citations** — the answer becomes verifiable, not just confident-sounding
+
+**The tool can be ANYTHING — web search is not mandatory:**
+
+The paper's concept is **Reflection + any tool that fills the knowledge gap.** The tool depends on your domain:
+
+| What the critique identifies | Tool that fills the gap |
+|------------------------------|------------------------|
+| "Missing recent funding data" | Web search (Tavily, Google) |
+| "SQL query might be wrong" | Code executor (run the SQL, check results) |
+| "Need to verify this API exists" | API call (hit the endpoint, check response) |
+| "Math calculation seems off" | Calculator tool |
+| "Need the actual document text" | RAG retriever (vector DB lookup) |
+| "Not sure about this law/rule" | Database query (legal DB, compliance DB) |
+
+Eden used Tavily (web search) because his example is a research article. But if you were building a **code generator**, the tool would be a code executor. For a **data analyst**, it would be a SQL runner. The pattern stays the same — only the tool changes.
 
 **Reflexion vs Reflection (the difference):**
 
