@@ -133,6 +133,11 @@ builder.add_conditional_edges("revise", event_loop, ["execute_tools", END])
 # ─── Compile ─────────────────────────────────────────────────────────────────
 graph = builder.compile()
 
+# Print Mermaid diagram (paste into https://mermaid.live to visualize)
+print(graph.get_graph().draw_mermaid())
+# Print ASCII diagram (renders directly in terminal)
+graph.get_graph().print_ascii()
+
 # Print graph structure
 print("=" * 60)
 print("📊 REFLEXION AGENT — GRAPH STRUCTURE")

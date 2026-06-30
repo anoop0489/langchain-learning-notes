@@ -108,7 +108,8 @@ The left column is the technique you need for interviews and system design. The 
 | 9 | [Code Walkthrough](#9-code-walkthrough) | Step-by-step through all 4 files |
 | 10 | [LangGraph Workflow Patterns](#10-langgraph-workflow-patterns) | Prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer |
 | 11 | [ToolNode Deep Dive](#11-toolnode-deep-dive) | How ToolNode works, input/output formats, error handling, ToolRuntime |
-| 12 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
+| 12 | [Production-Grade Checkpointers](#12-production-grade-checkpointers) | PostgresSaver, async, time travel, HIL — what Eden skipped |
+| 13 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
 
 ---
 
@@ -382,36 +383,23 @@ Count ToolMessages in state = 3
 ---
 config:
   flowchart:
-	curve: linear
+    curve: linear
 ---
 graph LR;
-	__start__([__start__]):::first
-	draft(draft)
-	execute_tools(execute_tools)
-	revise(revise)
-	__end__([__end__]):::last
-	__start__ --> draft;
-	draft --> execute_tools;
-	execute_tools --> revise;
-	revise -.-> execute_tools;
-	revise -.-> __end__;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
-```
-
-### ASCII Equivalent
-
-```
-┌───────┐    ┌───────────────┐    ┌────────┐
-│ DRAFT │───▶│ EXECUTE_TOOLS │───▶│ REVISE │
-└───────┘    └───────────────┘    └────┬───┘
-					▲                   │
-					│    (≤ MAX_ITER)   │
-					└───────────────────┘
-										│ (> MAX_ITER)
-										▼
-									 [END]
+        __start__([<p>__start__</p>]):::first
+        draft(draft)
+        execute_tools(execute_tools)
+        revise(revise)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> draft;
+        draft --> execute_tools;
+        execute_tools --> revise;
+        revise -.-> draft;
+        revise -.-> execute_tools;
+        revise -.-> __end__;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
 ```
 
 ### What Each Node Does
@@ -1361,6 +1349,237 @@ The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"Ans
 
 ---
 
+## 12. Production-Grade Checkpointers
+
+> ⚠️ **Eden didn't cover this.** He used `MemorySaver` (in-memory) which loses all state when the process dies. In production you need durable persistence — this section fills that gap.
+
+### Why You Need a Production Checkpointer
+
+`MemorySaver` is fine for demos but **catastrophic in production:**
+
+| Scenario | MemorySaver | Production Checkpointer |
+|----------|-------------|------------------------|
+| Server restarts/deploys | ❌ All state lost | ✅ Resumes from last checkpoint |
+| Multiple server instances | ❌ Each has its own memory | ✅ Shared DB, any instance can resume |
+| Long-running agents (Reflexion) | ❌ Crash = start over | ✅ Picks up from last completed node |
+| Human-in-the-loop (HIL) | ❌ User must stay connected | ✅ User can come back hours later |
+| Debugging/auditing | ❌ No history | ✅ Full time-travel through every state |
+
+### Available Checkpointers
+
+| Checkpointer | Package | Best For |
+|--------------|---------|----------|
+| `MemorySaver` | `langgraph` (built-in) | Local dev, testing, demos |
+| `PostgresSaver` (sync) | `langgraph-checkpoint-postgres` | Production APIs (FastAPI, Flask) |
+| `AsyncPostgresSaver` | `langgraph-checkpoint-postgres` | Production async APIs (ASGI, Starlette) |
+| `SqliteSaver` | `langgraph-checkpoint-sqlite` | Single-server production, edge deployments |
+| `AsyncSqliteSaver` | `langgraph-checkpoint-sqlite` | Async single-server |
+
+### Production Example: PostgresSaver with a Reflexion Agent
+
+```python
+"""
+Production Reflexion agent with PostgreSQL checkpointing.
+
+This is what a real deployment looks like:
+- State survives server restarts
+- Multiple workers can process the same conversation
+- You can time-travel to debug any step
+- Human-in-the-loop can pause for days
+
+Prerequisites:
+  pip install langgraph-checkpoint-postgres psycopg[binary]
+  # or: uv add langgraph-checkpoint-postgres "psycopg[binary]"
+
+  # PostgreSQL running with a database ready:
+  # CREATE DATABASE langgraph_checkpoints;
+
+Run:
+  uv run python main_production.py
+"""
+
+import os
+from dotenv import load_dotenv
+from langgraph.graph import StateGraph, MessagesState, START, END
+from langgraph.checkpoint.postgres import PostgresSaver
+from langchain_core.messages import HumanMessage, ToolMessage
+
+load_dotenv()
+
+# ─── 1. Database connection ─────────────────────────────────────────────────
+# In production: use env var, never hardcode credentials
+DB_URI = os.environ.get(
+    "CHECKPOINT_POSTGRES_URI",
+    "postgresql://user:password@localhost:5432/langgraph_checkpoints"
+)
+
+# ─── 2. Build the graph (same as before) ────────────────────────────────────
+from chains import first_responder, revisor
+from tool_executor import execute_tools
+
+MAX_ITERATIONS = 2
+
+def draft_node(state: MessagesState):
+    response = first_responder.invoke({"messages": state["messages"]})
+    return {"messages": [response]}
+
+def revise_node(state: MessagesState):
+    response = revisor.invoke({"messages": state["messages"]})
+    return {"messages": [response]}
+
+def event_loop(state: MessagesState):
+    count = sum(isinstance(m, ToolMessage) for m in state["messages"])
+    if count > MAX_ITERATIONS:
+        return END
+    return "execute_tools"
+
+builder = StateGraph(MessagesState)
+builder.add_node("draft", draft_node)
+builder.add_node("execute_tools", execute_tools)
+builder.add_node("revise", revise_node)
+builder.add_edge(START, "draft")
+builder.add_edge("draft", "execute_tools")
+builder.add_edge("execute_tools", "revise")
+builder.add_conditional_edges("revise", event_loop, ["execute_tools", END])
+
+# ─── 3. Compile WITH checkpointer (the only difference from demo code) ──────
+with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
+    # Create tables on first run (idempotent)
+    checkpointer.setup()
+
+    graph = builder.compile(checkpointer=checkpointer)
+
+    # ─── 4. Invoke with thread_id (required for checkpointing) ───────────────
+    config = {"configurable": {"thread_id": "research-article-001"}}
+
+    result = graph.invoke(
+        {"messages": [HumanMessage("Write about AI-Powered SOC startups that raised capital")]},
+        config=config,
+    )
+
+    print(result["messages"][-1].tool_calls[0]["args"]["answer"])
+
+    # ─── 5. Resume later (even after server restart) ─────────────────────────
+    # Same thread_id = picks up where it left off
+    # If the graph already completed, this returns the final state immediately
+    state = graph.get_state(config)
+    print(f"Thread status: {state.next}")  # () = completed, ('execute_tools',) = in progress
+```
+
+### Async Version (for FastAPI / Production APIs)
+
+```python
+"""Async checkpointing — for use inside FastAPI or any async framework."""
+
+import asyncio
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+async def run_agent():
+    async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
+        await checkpointer.setup()
+
+        graph = builder.compile(checkpointer=checkpointer)
+
+        config = {"configurable": {"thread_id": "user-42-session-7"}}
+
+        result = await graph.ainvoke(
+            {"messages": [HumanMessage("Write about AI-Powered SOC startups")]},
+            config=config,
+        )
+        return result
+
+# In FastAPI:
+# @app.post("/research")
+# async def research(question: str, thread_id: str):
+#     config = {"configurable": {"thread_id": thread_id}}
+#     result = await graph.ainvoke({"messages": [HumanMessage(question)]}, config)
+#     return {"answer": result["messages"][-1].tool_calls[0]["args"]["answer"]}
+```
+
+### What the Checkpointer Actually Stores
+
+After every node execution, the checkpointer saves:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ thread_id: "research-article-001"                               │
+│ checkpoint_id: "1ef7a8b2-..."  (auto-generated UUID)            │
+│ parent_checkpoint_id: "1ef7a8a1-..."  (previous checkpoint)     │
+│                                                                 │
+│ channel_values:                                                  │
+│   messages: [                                                   │
+│     HumanMessage("Write about AI-Powered SOC..."),              │
+│     AIMessage(tool_calls=[{name: "AnswerQuestion", ...}]),      │
+│     ToolMessage("Torq raised $70M..."),                         │
+│   ]                                                             │
+│                                                                 │
+│ metadata:                                                        │
+│   source: "loop"                                                │
+│   step: 3                                                       │
+│   writes: {"revise": {"messages": [...]}}                       │
+│                                                                 │
+│ pending_writes: []  (empty = node completed successfully)       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Time Travel — Debugging Production Issues
+
+```python
+# Get ALL checkpoints for a thread (full history of every node execution)
+checkpoints = list(checkpointer.list(config))
+
+for cp in checkpoints:
+    print(f"Step {cp.metadata['step']}: wrote to {list(cp.metadata['writes'].keys())}")
+    # Step 0: wrote to ['__start__']
+    # Step 1: wrote to ['draft']
+    # Step 2: wrote to ['execute_tools']
+    # Step 3: wrote to ['revise']
+    # Step 4: wrote to ['execute_tools']
+    # Step 5: wrote to ['revise']
+
+# Replay from a specific checkpoint (time travel)
+old_config = {"configurable": {"thread_id": "research-article-001", "checkpoint_id": checkpoints[2].id}}
+state_at_step_2 = graph.get_state(old_config)
+print(state_at_step_2.values["messages"])  # See exactly what the state was after execute_tools
+```
+
+### Human-in-the-Loop with Checkpointer
+
+```python
+# Compile with an interrupt — graph PAUSES before revise node
+graph = builder.compile(
+    checkpointer=checkpointer,
+    interrupt_before=["revise"],  # Pause here, let human review
+)
+
+config = {"configurable": {"thread_id": "hil-session-1"}}
+
+# First invoke — runs draft + execute_tools, then PAUSES
+result = graph.invoke(
+    {"messages": [HumanMessage("Write about AI-Powered SOC startups")]},
+    config=config,
+)
+# Graph is now paused. User can review the search results.
+# Hours/days can pass. Server can restart. State is in PostgreSQL.
+
+# Later: human approves, resume from where it paused
+result = graph.invoke(None, config=config)  # None = "continue from checkpoint"
+```
+
+### Key Takeaways for Interviews
+
+| Point | Detail |
+|-------|--------|
+| **MemorySaver = dev only** | Never use in production. State lost on restart. |
+| **PostgresSaver = production default** | Shared state, survives restarts, enables HIL |
+| **thread_id is mandatory** | Without it, the checkpointer can't find the right conversation |
+| **`checkpointer.setup()`** | Creates the required tables. Call once (idempotent). |
+| **Time travel** | `checkpointer.list(config)` returns every checkpoint — full audit trail |
+| **Interrupt + resume** | `interrupt_before`/`interrupt_after` + `invoke(None, config)` for HIL |
+| **The graph code doesn't change** | Only the `compile(checkpointer=...)` line differs between dev and prod |
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What is a Reflexion agent and how does it differ from basic reflection?**
@@ -1392,6 +1611,9 @@ The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"Ans
 
 **Q: What is `MessagesPlaceholder` and why is it critical in agentic prompts?**
 > **A:** `MessagesPlaceholder` is a slot in a `ChatPromptTemplate` that gets replaced at runtime with the entire `messages` list from graph state. Unlike `("human", "{input}")` which injects a single string, `MessagesPlaceholder` injects a full list of `HumanMessage`, `AIMessage`, and `ToolMessage` objects. In agentic graphs this is essential — each node needs to see the complete conversation history (prior answers, critiques, search results) to make informed decisions. Without it, the LLM would start from scratch on every iteration.
+
+**Q: Why can't you use MemorySaver in production, and what do you use instead?**
+> **A:** `MemorySaver` stores state in-process memory — it's lost on restart, can't be shared across server instances, and provides no audit trail. In production you use `PostgresSaver` (or `AsyncPostgresSaver` for async frameworks). It persists every checkpoint to a shared database, enabling server restarts without state loss, horizontal scaling, time-travel debugging via `checkpointer.list(config)`, and human-in-the-loop pauses that can last hours or days. The graph code stays identical — only the `compile(checkpointer=...)` line changes.
 
 ---
 
