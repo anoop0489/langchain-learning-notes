@@ -341,6 +341,51 @@ START → generate_joke → [check_punchline] → improve_joke → polish_joke �
 
 **When to use:** Well-defined tasks with verifiable intermediate steps (translation, content verification).
 
+```python
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+
+class State(TypedDict):
+    topic: str
+    joke: str
+    improved_joke: str
+    final_joke: str
+
+def generate_joke(state: State):
+    msg = llm.invoke(f"Write a short joke about {state['topic']}")
+    return {"joke": msg.content}
+
+def check_punchline(state: State):
+    """Gate function — pure Python, no LLM needed"""
+    if "?" in state["joke"] or "!" in state["joke"]:
+        return "Pass"
+    return "Fail"
+
+def improve_joke(state: State):
+    msg = llm.invoke(f"Make this joke funnier by adding wordplay: {state['joke']}")
+    return {"improved_joke": msg.content}
+
+def polish_joke(state: State):
+    msg = llm.invoke(f"Add a surprising twist to this joke: {state['improved_joke']}")
+    return {"final_joke": msg.content}
+
+workflow = StateGraph(State)
+workflow.add_node("generate_joke", generate_joke)
+workflow.add_node("improve_joke", improve_joke)
+workflow.add_node("polish_joke", polish_joke)
+
+workflow.add_edge(START, "generate_joke")
+# Conditional: if punchline passes → END, otherwise → improve
+workflow.add_conditional_edges(
+    "generate_joke", check_punchline, {"Fail": "improve_joke", "Pass": END}
+)
+workflow.add_edge("improve_joke", "polish_joke")
+workflow.add_edge("polish_joke", END)
+
+chain = workflow.compile()
+state = chain.invoke({"topic": "cats"})
+```
+
 ### Parallelization
 
 Multiple LLM calls run simultaneously, results aggregated.
@@ -355,6 +400,51 @@ START ───┼─── call_llm_2 (story) ──┼──→ aggregator →
 
 **LangGraph feature:** Multiple edges from START to different nodes automatically run in parallel.
 
+```python
+class State(TypedDict):
+    topic: str
+    joke: str
+    story: str
+    poem: str
+    combined_output: str
+
+def call_llm_1(state: State):
+    msg = llm.invoke(f"Write a joke about {state['topic']}")
+    return {"joke": msg.content}
+
+def call_llm_2(state: State):
+    msg = llm.invoke(f"Write a story about {state['topic']}")
+    return {"story": msg.content}
+
+def call_llm_3(state: State):
+    msg = llm.invoke(f"Write a poem about {state['topic']}")
+    return {"poem": msg.content}
+
+def aggregator(state: State):
+    combined = f"JOKE:\n{state['joke']}\n\nSTORY:\n{state['story']}\n\nPOEM:\n{state['poem']}"
+    return {"combined_output": combined}
+
+builder = StateGraph(State)
+builder.add_node("call_llm_1", call_llm_1)
+builder.add_node("call_llm_2", call_llm_2)
+builder.add_node("call_llm_3", call_llm_3)
+builder.add_node("aggregator", aggregator)
+
+# THREE edges from START → all three run in PARALLEL
+builder.add_edge(START, "call_llm_1")
+builder.add_edge(START, "call_llm_2")
+builder.add_edge(START, "call_llm_3")
+# All three converge into aggregator
+builder.add_edge("call_llm_1", "aggregator")
+builder.add_edge("call_llm_2", "aggregator")
+builder.add_edge("call_llm_3", "aggregator")
+builder.add_edge("aggregator", END)
+
+parallel_workflow = builder.compile()
+state = parallel_workflow.invoke({"topic": "cats"})
+print(state["combined_output"])
+```
+
 ### Routing
 
 LLM classifies input and routes to specialized handlers. No cycles.
@@ -363,7 +453,73 @@ LLM classifies input and routes to specialized handlers. No cycles.
 START → router_llm → {story: llm_1, joke: llm_2, poem: llm_3} → END
 ```
 
-**Key technique:** Use `with_structured_output(Route)` to get a Pydantic enum from the LLM, then route based on the field value.
+**Key technique:** Use `with_structured_output(Route)` to get a Pydantic model from the LLM, then route based on the field value.
+
+```python
+from typing_extensions import Literal
+from pydantic import BaseModel, Field
+from langchain_core.messages import HumanMessage, SystemMessage
+
+class Route(BaseModel):
+    step: Literal["poem", "story", "joke"] = Field(
+        description="The next step in the routing process"
+    )
+
+# LLM with forced structured output — always returns a Route object
+router = llm.with_structured_output(Route)
+
+class State(TypedDict):
+    input: str
+    decision: str
+    output: str
+
+def llm_call_router(state: State):
+    """LLM classifies the input and decides the route"""
+    decision = router.invoke([
+        SystemMessage(content="Route the input to story, joke, or poem."),
+        HumanMessage(content=state["input"]),
+    ])
+    return {"decision": decision.step}
+
+def write_story(state: State):
+    result = llm.invoke(f"Write a story: {state['input']}")
+    return {"output": result.content}
+
+def write_joke(state: State):
+    result = llm.invoke(f"Write a joke: {state['input']}")
+    return {"output": result.content}
+
+def write_poem(state: State):
+    result = llm.invoke(f"Write a poem: {state['input']}")
+    return {"output": result.content}
+
+def route_decision(state: State):
+    """Conditional edge function — returns the name of the next node"""
+    if state["decision"] == "story": return "write_story"
+    elif state["decision"] == "joke": return "write_joke"
+    elif state["decision"] == "poem": return "write_poem"
+
+builder = StateGraph(State)
+builder.add_node("llm_call_router", llm_call_router)
+builder.add_node("write_story", write_story)
+builder.add_node("write_joke", write_joke)
+builder.add_node("write_poem", write_poem)
+
+builder.add_edge(START, "llm_call_router")
+# path_map: {return value of route_decision: node name to visit}
+builder.add_conditional_edges("llm_call_router", route_decision, {
+    "write_story": "write_story",
+    "write_joke": "write_joke",
+    "write_poem": "write_poem",
+})
+builder.add_edge("write_story", END)
+builder.add_edge("write_joke", END)
+builder.add_edge("write_poem", END)
+
+router_workflow = builder.compile()
+state = router_workflow.invoke({"input": "Write me a joke about cats"})
+print(state["output"])
+```
 
 ### Orchestrator-Worker
 
@@ -376,10 +532,69 @@ START → orchestrator (plans sections) → [Send("worker", section) for each] �
 **Key LangGraph feature:** The `Send` API lets you dynamically create worker nodes at runtime — you don't need to know how many workers you'll need at graph construction time.
 
 ```python
+from typing import Annotated, List
+import operator
 from langgraph.types import Send
 
-def assign_workers(state):
+class Section(BaseModel):
+    name: str = Field(description="Name for this section of the report.")
+    description: str = Field(description="Brief overview of the section.")
+
+class Sections(BaseModel):
+    sections: List[Section] = Field(description="Sections of the report.")
+
+planner = llm.with_structured_output(Sections)
+
+# Main graph state — shared across all workers
+class State(TypedDict):
+    topic: str
+    sections: list[Section]
+    # operator.add reducer — all workers APPEND to this list in parallel
+    completed_sections: Annotated[list, operator.add]
+    final_report: str
+
+# Worker gets its OWN state with just one section
+class WorkerState(TypedDict):
+    section: Section
+    completed_sections: Annotated[list, operator.add]
+
+def orchestrator(state: State):
+    """LLM plans what sections the report needs"""
+    report_sections = planner.invoke([
+        SystemMessage(content="Generate a plan for the report."),
+        HumanMessage(content=f"Report topic: {state['topic']}"),
+    ])
+    return {"sections": report_sections.sections}
+
+def llm_call(state: WorkerState):
+    """Each worker writes ONE section"""
+    section = llm.invoke([
+        SystemMessage(content="Write a report section. Use markdown."),
+        HumanMessage(content=f"Section: {state['section'].name} — {state['section'].description}"),
+    ])
+    return {"completed_sections": [section.content]}
+
+def synthesizer(state: State):
+    return {"final_report": "\n\n---\n\n".join(state["completed_sections"])}
+
+def assign_workers(state: State):
+    """Dynamically spawn one worker per section via Send API"""
     return [Send("llm_call", {"section": s}) for s in state["sections"]]
+
+builder = StateGraph(State)
+builder.add_node("orchestrator", orchestrator)
+builder.add_node("llm_call", llm_call)
+builder.add_node("synthesizer", synthesizer)
+
+builder.add_edge(START, "orchestrator")
+# Conditional edge that SPAWNS workers dynamically
+builder.add_conditional_edges("orchestrator", assign_workers, ["llm_call"])
+builder.add_edge("llm_call", "synthesizer")
+builder.add_edge("synthesizer", END)
+
+workflow = builder.compile()
+state = workflow.invoke({"topic": "LLM scaling laws"})
+print(state["final_report"])
 ```
 
 ### Evaluator-Optimizer
@@ -391,6 +606,54 @@ START → generator → evaluator → {Accepted: END, Rejected: generator}
 ```
 
 **When to use:** Tasks with clear success criteria that need iteration (translation quality, code correctness, joke humor).
+
+```python
+class State(TypedDict):
+    joke: str
+    topic: str
+    feedback: str
+    funny_or_not: str
+
+class Feedback(BaseModel):
+    grade: Literal["funny", "not funny"] = Field(description="Is the joke funny?")
+    feedback: str = Field(description="How to improve if not funny.")
+
+evaluator = llm.with_structured_output(Feedback)
+
+def llm_call_generator(state: State):
+    if state.get("feedback"):
+        msg = llm.invoke(
+            f"Write a joke about {state['topic']} considering feedback: {state['feedback']}"
+        )
+    else:
+        msg = llm.invoke(f"Write a joke about {state['topic']}")
+    return {"joke": msg.content}
+
+def llm_call_evaluator(state: State):
+    grade = evaluator.invoke(f"Grade the joke: {state['joke']}")
+    return {"funny_or_not": grade.grade, "feedback": grade.feedback}
+
+def route_joke(state: State):
+    if state["funny_or_not"] == "funny":
+        return "Accepted"
+    return "Rejected + Feedback"
+
+builder = StateGraph(State)
+builder.add_node("llm_call_generator", llm_call_generator)
+builder.add_node("llm_call_evaluator", llm_call_evaluator)
+
+builder.add_edge(START, "llm_call_generator")
+builder.add_edge("llm_call_generator", "llm_call_evaluator")
+# Cycle back to generator if rejected, otherwise end
+builder.add_conditional_edges("llm_call_evaluator", route_joke, {
+    "Accepted": END,
+    "Rejected + Feedback": "llm_call_generator",
+})
+
+optimizer = builder.compile()
+state = optimizer.invoke({"topic": "Cats"})
+print(state["joke"])
+```
 
 ### Where Reflexion Fits
 
@@ -420,6 +683,63 @@ The Reflexion agent is a **combination** of:
 | **Error handling** | Configurable: catch errors and return them as ToolMessage, or propagate |
 | **State injection** | Via `ToolRuntime` — tools can access graph state and run-scoped context |
 
+### End-to-End Example: ToolNode in a Simple Agent
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, MessagesState, START, END
+from langgraph.prebuilt import ToolNode, tools_condition
+
+# 1. Define tools
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers together."""
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
+# 2. Bind tools to the LLM so it knows about them
+tools = [multiply, add]
+llm = ChatOpenAI(model="gpt-4o-mini").bind_tools(tools)
+
+# 3. Create ToolNode — it will execute whichever tool the LLM calls
+tool_node = ToolNode(tools)
+
+# 4. Build the graph
+def call_model(state: MessagesState):
+    return {"messages": [llm.invoke(state["messages"])]}
+
+builder = StateGraph(MessagesState)
+builder.add_node("call_model", call_model)
+builder.add_node("tools", tool_node)
+
+builder.add_edge(START, "call_model")
+# tools_condition: if LLM returned tool_calls → "tools", otherwise → END
+builder.add_conditional_edges("call_model", tools_condition)
+builder.add_edge("tools", "call_model")
+
+graph = builder.compile()
+
+# 5. Run it
+result = graph.invoke({"messages": [HumanMessage("What is 3 * 12?")]})
+print(result["messages"][-1].content)  # "3 * 12 = 36"
+```
+
+**What happens step by step:**
+
+| Step | Node | What Happens |
+|------|------|-------------|
+| 1 | `call_model` | LLM sees `multiply` and `add` tools, decides to call `multiply(3, 12)` |
+| 2 | `tools_condition` | Detects `tool_calls` in AIMessage → routes to `"tools"` |
+| 3 | `tools` (ToolNode) | Finds tool named `"multiply"` → invokes `multiply(3, 12)` → returns `ToolMessage(content="36")` |
+| 4 | `call_model` | LLM sees the ToolMessage result → responds with "3 * 12 = 36" |
+| 5 | `tools_condition` | No tool_calls → routes to END |
+
 ### Input Formats
 
 ```python
@@ -433,13 +753,46 @@ The Reflexion agent is a **combination** of:
 [{"name": "search", "args": {"query": "test"}, "id": "1", "type": "tool_call"}]
 ```
 
+### Parallel Tool Execution Example
+
+If the LLM returns multiple `tool_calls` in a single AIMessage, ToolNode executes ALL of them in parallel:
+
+```python
+from langchain_core.messages import AIMessage
+
+@tool
+def get_weather(city: str) -> str:
+    """Get weather for a city."""
+    return f"Sunny, 25°C in {city}"
+
+@tool
+def get_population(city: str) -> int:
+    """Get population of a city."""
+    return {"London": 9_000_000, "Tokyo": 14_000_000}.get(city, 0)
+
+tool_node = ToolNode([get_weather, get_population])
+
+# Simulate an AIMessage that calls BOTH tools at once
+ai_msg = AIMessage(content="", tool_calls=[
+    {"name": "get_weather", "args": {"city": "London"}, "id": "1", "type": "tool_call"},
+    {"name": "get_population", "args": {"city": "London"}, "id": "2", "type": "tool_call"},
+])
+
+# ToolNode executes both in parallel, returns TWO ToolMessages
+result = tool_node.invoke({"messages": [ai_msg]})
+for msg in result["messages"]:
+    print(f"Tool: {msg.name} → {msg.content}")
+# Tool: get_weather → Sunny, 25°C in London
+# Tool: get_population → 9000000
+```
+
 ### Error Handling Options
 
 ```python
 # Default: catches invocation errors, propagates execution errors
 ToolNode(tools)
 
-# Catch ALL errors, return as ToolMessage
+# Catch ALL errors, return as ToolMessage (agent can recover)
 ToolNode(tools, handle_tool_errors=True)
 
 # Custom error message
@@ -448,8 +801,29 @@ ToolNode(tools, handle_tool_errors="Something went wrong, please try again.")
 # Custom handler function
 ToolNode(tools, handle_tool_errors=lambda e: f"Error: {str(e)}")
 
-# Disable error handling (exceptions propagate)
+# Disable error handling (exceptions propagate — crashes the graph)
 ToolNode(tools, handle_tool_errors=False)
+```
+
+**Example with error handling:**
+
+```python
+@tool
+def risky_tool(query: str) -> str:
+    """A tool that might fail."""
+    raise ValueError(f"Cannot process: {query}")
+
+# With handle_tool_errors=True, the error becomes a ToolMessage
+# instead of crashing the graph — the LLM can retry or adjust
+tool_node = ToolNode([risky_tool], handle_tool_errors=True)
+
+ai_msg = AIMessage(content="", tool_calls=[
+    {"name": "risky_tool", "args": {"query": "test"}, "id": "1", "type": "tool_call"}
+])
+result = tool_node.invoke({"messages": [ai_msg]})
+print(result["messages"][0].content)
+# "Error: Cannot process: test"
+# The LLM sees this as a ToolMessage and can decide what to do next
 ```
 
 ### ToolRuntime — Accessing State From Tools
@@ -457,20 +831,59 @@ ToolNode(tools, handle_tool_errors=False)
 Tools normally only receive the args the LLM generates. To access **graph state** or **run-scoped context**, use `ToolRuntime`:
 
 ```python
-from langchain.tools import ToolRuntime, tool
+from langchain_core.tools import tool, ToolRuntime
 
 class State(MessagesState):
     user_id: str
+    permissions: list[str]
 
 @tool
 def get_user_info(runtime: ToolRuntime[None, State]) -> str:
     """Look up user information."""
-    # Access graph state that the LLM didn't generate
     user_id = runtime.state["user_id"]
-    return f"User {user_id}"
+    permissions = runtime.state["permissions"]
+    return f"User {user_id} has permissions: {', '.join(permissions)}"
 ```
 
 **Important:** Tools can only access state values passed to the ToolNode. When ToolNode is a direct graph node, it receives the full state. If you invoke it manually from another node, pass the full state explicitly.
+
+**Full ToolRuntime example in a graph:**
+
+```python
+@tool
+def get_user_orders(runtime: ToolRuntime[None, State]) -> str:
+    """Get orders for the current user from graph state."""
+    user_id = runtime.state["user_id"]
+    # In production: db_query(user_id)
+    return f"User {user_id} has 3 pending orders"
+
+class State(MessagesState):
+    user_id: str
+
+tools = [get_user_orders]
+llm = ChatOpenAI(model="gpt-4o-mini").bind_tools(tools)
+tool_node = ToolNode(tools)
+
+def call_model(state: State):
+    return {"messages": [llm.invoke(state["messages"])]}
+
+builder = StateGraph(State)
+builder.add_node("call_model", call_model)
+builder.add_node("tools", tool_node)  # ToolNode gets full State, including user_id
+
+builder.add_edge(START, "call_model")
+builder.add_conditional_edges("call_model", tools_condition)
+builder.add_edge("tools", "call_model")
+
+graph = builder.compile()
+
+# user_id is in graph state — the LLM never sees it, but the tool can access it
+result = graph.invoke({
+    "messages": [HumanMessage("What are my orders?")],
+    "user_id": "user-42",
+})
+print(result["messages"][-1].content)
+```
 
 ### How It's Used in This Project
 
@@ -525,7 +938,7 @@ The LLM calls `tool_choice="AnswerQuestion"` → ToolNode finds tool named `"Ans
 
 - [Reflexion Paper (Shinn et al., 2023)](https://arxiv.org/pdf/2303.11366) — The original paper from Northeastern, MIT, and Princeton
 - [LangChain Blog — Reflection Agents](https://www.langchain.com/blog/reflection-agents) — LangChain team's implementation guide
-- [LangGraph Reflexion Tutorial](https://langchain-ai.github.io/langgraph/tutorials/reflexion/reflexion/) — Official LangGraph tutorial
+- [LangGraph Reflexion Tutorial](https://www.langchain.com/blog/reflection-agents#reflexion) — Official LangGraph tutorial
 - [Tavily Search](https://tavily.com/) — Search engine optimized for LLM applications
-- [LangGraph Workflows and Agents Guide](https://langchain-ai.github.io/langgraph/concepts/workflows-agents/) — Official patterns documentation (prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer)
-- [ToolNode API Reference](https://reference.langchain.com/python/langgraph.prebuilt/tool_node/ToolNode) — Prebuilt node for tool execution
+- [LangGraph Workflows and Agents Guide](https://docs.langchain.com/oss/python/langgraph/workflows-agents) — Official patterns documentation (prompt chaining, parallelization, routing, orchestrator-worker, evaluator-optimizer)
+- [ToolNode API Reference](https://docs.langchain.com/oss/python/langgraph/workflows-agents#toolnode) — Prebuilt node for tool execution
