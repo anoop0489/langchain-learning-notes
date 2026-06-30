@@ -115,12 +115,21 @@ def should_continue(state: MessageGraph):
 
 # ─── Wire the edges ──────────────────────────────────────────────────────────
 # After GENERATE → check if we should continue or stop
-builder.add_conditional_edges(GENERATE, should_continue)
+# path_map explicitly maps the return values of should_continue to node names.
+# This helps LangGraph render the full graph correctly (showing both branches
+# in Mermaid/ASCII diagrams). Without it, the graph visualization may omit
+# the reflect node from the diagram even though execution still works.
+builder.add_conditional_edges(GENERATE, should_continue, path_map={END: END, REFLECT: REFLECT})
 # After REFLECT → always go back to GENERATE (the cycle!)
 builder.add_edge(REFLECT, GENERATE)
 
 # ─── Compile ─────────────────────────────────────────────────────────────────
 graph = builder.compile()
+
+# Print Mermaid diagram (paste into https://mermaid.live to visualize)
+print(graph.get_graph().draw_mermaid())
+# Print ASCII diagram (renders directly in terminal)
+graph.get_graph().print_ascii()
 
 # Print the graph structure (ASCII art)
 print("=" * 60)
