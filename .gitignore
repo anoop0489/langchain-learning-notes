@@ -23,3 +23,9 @@ chroma_db/
 
 # --- Local demos (not committed to repo) ---
 /demos/
+
+# --- Eden's raw source repos (reference only, not part of our notes) ---
+/langgraph-course-project-agentic-rag/
+
+# --- ChromaDB local persistence ---
+.chroma/

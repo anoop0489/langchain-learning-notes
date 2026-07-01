@@ -71,6 +71,12 @@ Building a reflection agent that iteratively improves tweets through generate �
 Tool-augmented self-improvement — extending reflection with Tavily search, structured output, and citations.
 * [19. Reflexion Agent (Tool-Augmented Self-Critique, Structured Output, Citations)](./15-reflexion-agent/19_Reflexion_Agent.md)
 
+### Section 16: Agentic RAG 🔍🤖
+*Folder: [`/16-agentic-rag`](./16-agentic-rag)*
+Adaptive retrieval with self-correction — routing, document grading, hallucination detection, and web search fallback.
+* [20. Agentic RAG Theory (Adaptive RAG, Self-RAG, Routing, Grading, Hallucination Detection)](./16-agentic-rag/20_Agentic_RAG.md)
+* [21. Agentic RAG Implementation (ChromaDB, Tavily, LangGraph Conditional Edges)](./16-agentic-rag/21_Agentic_RAG_Implementation.md)
+
 ---
 
 ## 📖 Reference Guides
@@ -86,7 +92,7 @@ Tool-augmented self-improvement — extending reflection with Tavily search, str
 - **Frameworks:** LangChain, LangGraph
 - **Observability:** LangSmith
 - **Models:** OpenAI (GPT-4o), Ollama (Local LLMs)
-- **Vector Stores:** Pinecone
+- **Vector Stores:** Pinecone (cloud), ChromaDB (local)
 - **APIs:** Tavily (Search)
 
 ---

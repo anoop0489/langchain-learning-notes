@@ -135,6 +135,9 @@ XX-section-name/
 | `pypdf` | PDF parsing (fallback, pure Python) |
 | `pdf2image` | PDF page to image conversion |
 | `streamlit` | Rapid UI prototyping for chatbots/demos |
+| `langchain-chroma` | ChromaDB vector store integration (Section 16) |
+| `langchainhub` | Pull prompts from LangChain Hub (e.g., `rlm/rag-prompt`) |
+| `tiktoken` | OpenAI tokenizer for chunk size measurement |
 
 ---
 
@@ -153,4 +156,5 @@ XX-section-name/
 | 12. LLM Apps in Production | `12-llm-apps-in-production/` | ✅ Complete |
 | 13. LangGraph Fundamentals | `13-langgraph-fundamentals/` | ✅ Complete |
 | 14. Reflection Agent | `14-reflection-agent/` | ✅ Complete |
-| 15. Reflexion Agent | `15-reflexion-agent/` | 🔄 In Progress |
+| 15. Reflexion Agent | `15-reflexion-agent/` | ✅ Complete |
+| 16. Agentic RAG | `16-agentic-rag/` | 🔄 In Progress |
