@@ -1,3 +1,10 @@
+# ---------------------------------------------------------------------------
+# generate.py - Answer generation node
+# ---------------------------------------------------------------------------
+# Takes filtered/augmented documents + question and generates an answer
+# using the rlm/rag-prompt from LangChain Hub.
+# ---------------------------------------------------------------------------
+
 from typing import Any, Dict
 
 from graph.chains.generation import generation_chain

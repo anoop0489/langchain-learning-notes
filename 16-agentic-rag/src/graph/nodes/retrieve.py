@@ -1,3 +1,10 @@
+# ---------------------------------------------------------------------------
+# retrieve.py - Vectorstore retrieval node
+# ---------------------------------------------------------------------------
+# Queries ChromaDB with the user's question and returns matching documents.
+# The retriever is imported from ingestion.py (created once during ingestion).
+# ---------------------------------------------------------------------------
+
 from typing import Any, Dict
 
 from graph.state import GraphState

@@ -1,4 +1,26 @@
+# ---------------------------------------------------------------------------
+# graph.py - Full Agentic RAG graph definition
+# ---------------------------------------------------------------------------
+# Assembles the StateGraph with 4 nodes and conditional edges:
+#   - Conditional entry point (router decides vectorstore or web search)
+#   - Document grading with web search fallback
+#   - Self-RAG: hallucination check + answer relevance check after generation
+#
+# The compiled graph is exported as `app` for use by main.py.
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
 from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
+
 from langgraph.graph import END, StateGraph
 
 from graph.chains.answer_grader import answer_grader
@@ -7,8 +29,6 @@ from graph.chains.router import RouteQuery, question_router
 from graph.consts import GENERATE, GRADE_DOCUMENTS, RETRIEVE, WEBSEARCH
 from graph.nodes import generate, grade_documents, retrieve, web_search
 from graph.state import GraphState
-
-load_dotenv()
 
 
 def decide_to_generate(state: GraphState) -> str:

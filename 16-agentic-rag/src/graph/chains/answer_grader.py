@@ -1,3 +1,23 @@
+# ---------------------------------------------------------------------------
+# answer_grader.py - Answer relevance check
+# ---------------------------------------------------------------------------
+# After confirming the generation is grounded (not hallucinated), this chain
+# checks whether the answer actually ADDRESSES the user's question.
+# A grounded answer that doesn't answer the question is still useless.
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_openai import ChatOpenAI

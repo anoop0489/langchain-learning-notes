@@ -1,3 +1,23 @@
+# ---------------------------------------------------------------------------
+# retrieval_grader.py - Document relevance grading chain
+# ---------------------------------------------------------------------------
+# Given a retrieved document and the user question, grades whether the
+# document is relevant ("yes") or not ("no"). Used by the grade_documents
+# node to filter out irrelevant chunks before generation.
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field

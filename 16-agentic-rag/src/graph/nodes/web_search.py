@@ -1,4 +1,24 @@
+# ---------------------------------------------------------------------------
+# web_search.py - Tavily web search fallback node
+# ---------------------------------------------------------------------------
+# Called when: (1) router decides question is off-topic for vectorstore, or
+# (2) grade_documents finds irrelevant docs, or (3) answer grader says
+# generation doesn't address the question. Appends web results to documents.
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
 from typing import Any, Dict
+
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
 
 from langchain.schema import Document
 from langchain_tavily import TavilySearch

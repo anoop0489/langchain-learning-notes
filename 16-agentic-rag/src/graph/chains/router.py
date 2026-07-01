@@ -1,4 +1,27 @@
+# ---------------------------------------------------------------------------
+# router.py - Question routing chain (vectorstore vs web search)
+# ---------------------------------------------------------------------------
+# Uses structured output to classify the user's question and decide whether
+# to route it to the local vectorstore (agents, prompt eng, adversarial
+# attacks) or to Tavily web search (everything else).
+#
+# This is the ADAPTIVE RAG entry point - the graph doesn't always start
+# at the same node because of this router.
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
 from typing import Literal
+
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI

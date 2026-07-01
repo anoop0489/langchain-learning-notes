@@ -1,32 +1,34 @@
-"""
-Agentic RAG — Document Ingestion Pipeline
-==========================================
+# ---------------------------------------------------------------------------
+# ingestion.py - Agentic RAG Document Ingestion Pipeline
+# ---------------------------------------------------------------------------
+# Loads web pages (Lilian Weng's blog posts on Agents, Prompt Engineering,
+# and Adversarial Attacks on LLMs), splits them into chunks, and stores them
+# in a ChromaDB vector store with OpenAI embeddings.
+#
+# Run ONCE to create the vector store:
+#     cd 16-agentic-rag/src
+#     uv run python ingestion.py
+#
+# After ingestion, the retriever is importable from this module for use by
+# the graph's retrieve node.
+# ---------------------------------------------------------------------------
 
-Loads web pages (Lilian Weng's blog posts on Agents, Prompt Engineering,
-and Adversarial Attacks on LLMs), splits them into chunks, and stores them
-in a ChromaDB vector store with OpenAI embeddings.
-
-Run ONCE to create the vector store:
-    uv run python 16-agentic-rag/src/ingestion.py
-
-After ingestion, the retriever is importable from this module for use by
-the graph's retrieve node.
-"""
-
+import os
 import sys
 
 import truststore
-
 truststore.inject_into_ssl()
 sys.stdout.reconfigure(encoding="utf-8")
 
 from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_openai import OpenAIEmbeddings
-
-load_dotenv()
 
 CHROMA_PERSIST_DIR = "./.chroma"
 COLLECTION_NAME = "rag-chroma"
@@ -38,9 +40,17 @@ urls = [
 ]
 
 
+def check_prerequisites():
+    required = ["OPENAI_API_KEY"]
+    missing = [var for var in required if not os.environ.get(var)]
+    if missing:
+        print(f"Missing environment variables: {', '.join(missing)}")
+        print("   Add them to your .env file")
+        sys.exit(1)
+
+
 def ingest_documents():
-    """Load, split, and embed documents into ChromaDB."""
-    print("📥 Loading documents from web...")
+    print("Loading documents from web...")
     docs = [WebBaseLoader(url).load() for url in urls]
     docs_list = [item for sublist in docs for item in sublist]
     print(f"   Loaded {len(docs_list)} documents")
@@ -51,14 +61,14 @@ def ingest_documents():
     doc_splits = text_splitter.split_documents(docs_list)
     print(f"   Split into {len(doc_splits)} chunks")
 
-    print("📤 Embedding and storing in ChromaDB...")
+    print("Embedding and storing in ChromaDB...")
     Chroma.from_documents(
         documents=doc_splits,
         collection_name=COLLECTION_NAME,
         embedding=OpenAIEmbeddings(),
         persist_directory=CHROMA_PERSIST_DIR,
     )
-    print("✅ Ingestion complete!")
+    print("Ingestion complete!")
 
 
 retriever = Chroma(
@@ -69,4 +79,5 @@ retriever = Chroma(
 
 
 if __name__ == "__main__":
+    check_prerequisites()
     ingest_documents()

@@ -1,3 +1,23 @@
+# ---------------------------------------------------------------------------
+# hallucination_grader.py - Generation grounding check (Self-RAG)
+# ---------------------------------------------------------------------------
+# After generation, this chain checks whether the LLM's answer is actually
+# supported by the retrieved documents. Returns True if grounded, False if
+# the LLM hallucinated (made up content not in the docs).
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+import truststore
+truststore.inject_into_ssl()
+sys.stdout.reconfigure(encoding="utf-8")
+
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_openai import ChatOpenAI

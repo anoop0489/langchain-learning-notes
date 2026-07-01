@@ -1,22 +1,22 @@
-"""
-Tests for the Agentic RAG chains.
-
-Verifies each grader chain (retrieval relevance, hallucination detection,
-answer grading) and the router independently before running the full graph.
-
-Run:
-    uv run pytest 16-agentic-rag/src/graph/chains/tests/test_chains.py -s -v
-"""
+# ---------------------------------------------------------------------------
+# test_chains.py - Unit tests for Agentic RAG chains
+# ---------------------------------------------------------------------------
+# Tests each grader chain independently before running the full graph.
+# This is a production best practice: if the full graph fails, these tests
+# pinpoint exactly which chain broke.
+#
+# Run:
+#   cd 16-agentic-rag/src
+#   uv run pytest graph/chains/tests/test_chains.py -s -v
+# ---------------------------------------------------------------------------
 
 import sys
 
 import truststore
-
 truststore.inject_into_ssl()
 sys.stdout.reconfigure(encoding="utf-8")
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 from graph.chains.generation import generation_chain
@@ -52,7 +52,7 @@ def test_generation_chain() -> None:
     question = "agent memory"
     docs = retriever.invoke(question)
     generation = generation_chain.invoke({"context": docs, "question": question})
-    print(f"\n📝 Generation: {generation}")
+    print(f"\nGeneration: {generation}")
     assert len(generation) > 0
 
 
