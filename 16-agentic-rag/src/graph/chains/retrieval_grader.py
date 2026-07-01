@@ -1,14 +1,19 @@
-# ---------------------------------------------------------------------------
-# retrieval_grader.py - Document relevance grading chain
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# retrieval_grader.py — Document relevance grading chain
+# ─────────────────────────────────────────────────────────────────────────────
 # Given a retrieved document and the user question, grades whether the
 # document is relevant ("yes") or not ("no"). Used by the grade_documents
 # node to filter out irrelevant chunks before generation.
-# ---------------------------------------------------------------------------
+#
+# Key technique:
+#   with_structured_output(GradeDocuments) → the LLM MUST respond with
+#   binary_score = "yes" or "no". No freeform rambling allowed.
+# ─────────────────────────────────────────────────────────────────────────────
 
 import os
 import sys
 
+# ─── Corporate proxy SSL fix (must be FIRST before any network imports) ──────
 import truststore
 truststore.inject_into_ssl()
 sys.stdout.reconfigure(encoding="utf-8")
@@ -16,6 +21,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 from dotenv import load_dotenv
 load_dotenv()
 
+# ─── LangSmith tracing → dedicated project ───────────────────────────────────
 os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,6 +29,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 
+# ─── Structured output schema ────────────────────────────────────────────────
 class GradeDocuments(BaseModel):
     """Binary score for relevance check on retrieved documents."""
 
@@ -31,6 +38,7 @@ class GradeDocuments(BaseModel):
     )
 
 
+# ─── Chain setup ─────────────────────────────────────────────────────────────
 llm = ChatOpenAI(temperature=0)
 structured_llm_grader = llm.with_structured_output(GradeDocuments)
 
@@ -45,4 +53,5 @@ grade_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
+# ─── Exported chain ──────────────────────────────────────────────────────────
 retrieval_grader = grade_prompt | structured_llm_grader

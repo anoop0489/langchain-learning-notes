@@ -1,14 +1,18 @@
-# ---------------------------------------------------------------------------
-# hallucination_grader.py - Generation grounding check (Self-RAG)
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# hallucination_grader.py — Generation grounding check (Self-RAG)
+# ─────────────────────────────────────────────────────────────────────────────
 # After generation, this chain checks whether the LLM's answer is actually
-# supported by the retrieved documents. Returns True if grounded, False if
+# SUPPORTED by the retrieved documents. Returns True if grounded, False if
 # the LLM hallucinated (made up content not in the docs).
-# ---------------------------------------------------------------------------
+#
+# This is the first half of the Self-RAG verification loop.
+# If this fails → the graph retries generation (same docs, new attempt).
+# ─────────────────────────────────────────────────────────────────────────────
 
 import os
 import sys
 
+# ─── Corporate proxy SSL fix (must be FIRST before any network imports) ──────
 import truststore
 truststore.inject_into_ssl()
 sys.stdout.reconfigure(encoding="utf-8")
@@ -16,6 +20,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 from dotenv import load_dotenv
 load_dotenv()
 
+# ─── LangSmith tracing → dedicated project ───────────────────────────────────
 os.environ["LANGSMITH_PROJECT"] = "agentic-rag"
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -24,6 +29,8 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 
+# ─── Structured output schema ────────────────────────────────────────────────
+# Note: binary_score is a BOOL here (not str). True = grounded, False = hallucinated.
 class GradeHallucinations(BaseModel):
     """Binary score for hallucination present in generation answer."""
 
@@ -32,6 +39,7 @@ class GradeHallucinations(BaseModel):
     )
 
 
+# ─── Chain setup ─────────────────────────────────────────────────────────────
 llm = ChatOpenAI(temperature=0)
 structured_llm_grader = llm.with_structured_output(GradeHallucinations)
 
@@ -45,4 +53,5 @@ hallucination_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
+# ─── Exported chain ──────────────────────────────────────────────────────────
 hallucination_grader: RunnableSequence = hallucination_prompt | structured_llm_grader

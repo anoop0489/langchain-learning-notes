@@ -1,10 +1,10 @@
-# ---------------------------------------------------------------------------
-# grade_documents.py - Document relevance filtering node
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# grade_documents.py — Document relevance filtering node
+# ─────────────────────────────────────────────────────────────────────────────
 # Loops through ALL retrieved documents and grades each one for relevance.
 # Relevant docs are kept; irrelevant docs are dropped.
-# If ANY document is irrelevant, sets web_search=True to supplement.
-# ---------------------------------------------------------------------------
+# If ANY document is irrelevant, sets web_search=True to supplement later.
+# ─────────────────────────────────────────────────────────────────────────────
 
 from typing import Any, Dict
 
@@ -13,6 +13,7 @@ from graph.state import GraphState
 
 
 def grade_documents(state: GraphState) -> Dict[str, Any]:
+    """Filter documents by relevance; flag web_search if any are irrelevant."""
     print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
     question = state["question"]
     documents = state["documents"]
