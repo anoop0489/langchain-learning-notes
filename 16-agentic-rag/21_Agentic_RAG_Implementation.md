@@ -10,6 +10,7 @@
 16-agentic-rag/
 ├── 20_Agentic_RAG.md                  # Theory & concepts
 ├── 21_Agentic_RAG_Implementation.md   # This file
+├── 22_Production_Optimisation.md      # Cost/latency guide (rerankers, fewer LLM calls)
 └── src/
 	├── main.py                        # Entry point
 	├── ingestion.py                   # ChromaDB ingestion (run once)
