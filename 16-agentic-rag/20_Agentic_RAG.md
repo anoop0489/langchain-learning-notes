@@ -563,6 +563,7 @@ def grade_generation_grounded_in_documents_and_question(state: GraphState) -> st
 - [Reflexion Paper (Shinn et al., 2023)](https://arxiv.org/pdf/2303.11366) — Self-RAG concepts originated here
 - [Self-RAG Paper (Asai et al., 2023)](https://arxiv.org/abs/2310.11511) — Original Self-RAG paper from University of Washington
 - [Adaptive RAG Paper (Jeong et al., 2024)](https://arxiv.org/abs/2403.14403) — Adaptive retrieval strategies
+- [Advance RAG control flow with Mistral and LangChain (YouTube)](https://www.youtube.com/watch?v=sgnrL7yo1TE) — Original video by Sophia Young (Mistral) & Lance Martin (LangChain)
 - [LangChain Cookbook — Advanced RAG](https://github.com/mistralai/cookbook/tree/main/third_party/langchain) — Original Sophia Young + Lance Martin notebook
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/) — StateGraph, conditional edges, compilation
 - [ChromaDB](https://www.trychroma.com/) — Open-source embedding database
