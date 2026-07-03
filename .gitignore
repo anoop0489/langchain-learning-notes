@@ -15,6 +15,7 @@ __pycache__/
 
 # --- Raw transcripts (source material, not revision notes) ---
 Notes.txt
+placeholder.txt
 /09-gist-of-rag/src/event tracking.pdf
 
 # --- Vector store data (local Chroma, generated at runtime) ---

@@ -78,7 +78,12 @@ Adaptive retrieval with self-correction — routing, document grading, hallucina
 * [21. Agentic RAG Implementation (ChromaDB, Tavily, LangGraph Conditional Edges)](./16-agentic-rag/21_Agentic_RAG_Implementation.md)
 * [22. Production Optimisation (Rerankers, Fewer LLM Calls, Cost/Latency Guide)](./16-agentic-rag/22_Production_Optimisation.md)
 
----
+### Section 17: Introduction to MCP 🔌
+*Folder: [`/17-introduction-to-mcp`](./17-introduction-to-mcp)*
+Model Context Protocol — the universal standard for exposing tools, resources, and context to LLMs.
+* [23. MCP Theory & Concepts (Protocol, Transports, Tools/Resources/Prompts, Interceptors)](./17-introduction-to-mcp/23_MCP_Theory_And_Concepts.md)
+
+
 
 ## 📖 Reference Guides
 

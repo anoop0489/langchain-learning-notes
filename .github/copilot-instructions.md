@@ -35,6 +35,7 @@ XX-section-name/
 6. **References** — at the very end, bullet list of relevant links.
 7. **Keep as one file** — don't split into subpages. Use the TOC for navigation. Ctrl+F across one file is faster for revision.
 8. **Flow-oriented documentation** — topics must build on each other logically, avoiding jumps between unrelated concepts. Cross-cutting concepts should go into `reference-guides/` instead of bloating section-specific theory docs.
+9. **Clarity for Newbies** — write documentation with utmost clarity. Avoid putting readers in a position where they could learn the wrong thing. Ensure examples are not misleading; if a concept is "remote HTTP" but the example uses localhost, explain why to prevent confusion between development and production contexts.
 
 ### Implementation Docs (`*_Implementation.md`)
 
@@ -157,4 +158,5 @@ XX-section-name/
 | 13. LangGraph Fundamentals | `13-langgraph-fundamentals/` | ✅ Complete |
 | 14. Reflection Agent | `14-reflection-agent/` | ✅ Complete |
 | 15. Reflexion Agent | `15-reflexion-agent/` | ✅ Complete |
-| 16. Agentic RAG | `16-agentic-rag/` | 🔄 In Progress |
+| 16. Agentic RAG | `16-agentic-rag/` | ✅ Complete |
+| 17. Introduction to MCP | `17-introduction-to-mcp/` | 🔄 In Progress |
