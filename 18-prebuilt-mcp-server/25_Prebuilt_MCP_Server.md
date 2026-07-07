@@ -47,7 +47,8 @@
 | 3 | [llms.txt — The Website Index for AI (Ch. 132)](#3-llmstxt--the-website-index-for-ai-ch-132) | What llms.txt is, why it exists, when to use each variant |
 | 4 | [mcpdoc — Real-Time Documentation Server (Ch. 133)](#4-mcpdoc--real-time-documentation-server-ch-133) | How mcpdoc works, setup, integration with Claude Desktop |
 | 5 | [The Full Flow: Query → llms.txt → Scrape → Answer](#5-the-full-flow-query--llmstxt--scrape--answer) | Step-by-step execution trace |
-| 6 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
+| 6 | [mcpdoc vs RAG — Clarifying the Confusion](#6-mcpdoc-vs-rag--clarifying-the-confusion) | When mcpdoc is enough, when you need RAG, and image support |
+| 7 | [Interview Q&A Anchors](#interview-qa-anchors) | Quick-fire answers |
 
 ---
 
@@ -416,6 +417,68 @@ Claude Desktop stores MCP server configs in a JSON file:
 
 ---
 
+## 6. mcpdoc vs RAG — Clarifying the Confusion
+
+A common source of confusion: mcpdoc fetches relevant documentation and gives it to the LLM for a grounded answer — isn't that just RAG?
+
+### The Honest Answer
+
+**Yes, the goal is the same:** retrieve relevant information → give it to the LLM → get a grounded answer. That's retrieval-augmented generation in spirit. The difference is the **retrieval mechanism** and **when processing happens:**
+
+| | Traditional RAG | mcpdoc (index + fetch) |
+|--|-----------------|------------------------|
+| **How it finds relevant content** | Embedding math — cosine similarity over vectors | LLM reads a table of contents and picks the right URL |
+| **Pre-processing required** | Yes — chunk all docs, embed, store in vector DB (upfront, offline) | None — fetches live at query time |
+| **What gets retrieved** | Small chunks (200-500 tokens) from across many documents | One entire page at a time |
+| **Infrastructure** | Vector DB + embedding model + ingestion pipeline | Just an HTTP fetch. That's it. |
+| **Freshness** | Stale — only as fresh as last re-index | Always live — scrapes on demand |
+
+### Why mcpdoc Works Without RAG Infrastructure
+
+The key insight: **mcpdoc only works because the index (`llms.txt`) is small enough for the LLM to read.**
+
+LangGraph docs have ~50 pages listed in their `llms.txt`. That index is maybe 2,000-3,000 tokens — trivial for any modern LLM to read and reason over. The LLM acts as the "retriever" by reading the index and picking the right URL.
+
+### When This Approach Breaks Down (RAG Becomes Necessary)
+
+The mcpdoc/index pattern stops working when:
+
+| Scenario | Why It Breaks | Solution |
+|----------|---------------|----------|
+| **Index too large** (1,000+ pages listed) | `llms.txt` itself won't fit in context window | Need vector search to find relevant items |
+| **Multiple sources combined** (all Confluence + all Slack + all emails) | Combined index = tens of thousands of entries | Need embeddings across all sources |
+| **Sub-page precision needed** | Answer is in one paragraph of a 50-page doc | Need chunking to isolate the relevant paragraph |
+| **Semantic matching required** | User says "vacation policy" but doc says "PTO guidelines" | Need embedding similarity (understands synonyms) |
+
+### The Practical Rule of Thumb
+
+```
+Single documentation site (30-200 pages):
+  → mcpdoc/llms.txt is simpler, fresher, and sufficient
+  → No infrastructure needed
+
+Multiple heterogeneous sources (1,000+ documents):
+  → RAG is necessary — index alone won't fit in context
+  → Vector search scales regardless of corpus size
+
+The boundary: Can the LLM read your entire index in one shot?
+  Yes → mcpdoc pattern works
+  No  → You need RAG's mathematical retrieval
+```
+
+### What About Images?
+
+**`mcpdoc` is text-only.** Its `fetch_docs` tool scrapes web pages and returns the text/Markdown content. It does not download, process, or return images embedded in documentation pages.
+
+If your documentation relies heavily on diagrams, screenshots, or visual content:
+- `mcpdoc` will miss that information entirely
+- The LLM will only see the text portions of the page
+- For image-heavy docs, you'd need a multimodal RAG pipeline (extract images → describe with vision model → index descriptions)
+
+The MCP protocol itself supports multimodal tool responses (images, audio — see Section 17), but `mcpdoc` specifically does not use this capability. It's a text-scraping tool.
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What is `llms.txt` and how does it relate to MCP?**
@@ -438,6 +501,12 @@ Claude Desktop stores MCP server configs in a JSON file:
 
 **Q: What are the trade-offs of real-time doc fetching (mcpdoc) vs RAG-indexed docs?**
 > **A:** Real-time fetching (mcpdoc) gives guaranteed freshness but higher latency (2-3 tool calls + scraping = 5-10s). RAG-indexed docs give lower latency (fast vector search) but go stale unless you re-index periodically. For rapidly changing docs (LangGraph), real-time fetching is better. For stable internal docs, RAG is more efficient. You can combine both — RAG for common queries, MCP fallback for freshness.
+
+**Q: When does the mcpdoc/llms.txt pattern stop working and you need traditional RAG?**
+> **A:** When the index itself is too large for the LLM to read in one context window. A documentation site with 30-200 pages works fine — the `llms.txt` is a few thousand tokens. But if you're combining thousands of heterogeneous documents (Confluence + Slack + emails), the combined index won't fit in context. At that point, you need vector search to mathematically narrow down relevant documents, which is exactly what RAG does.
+
+**Q: Does mcpdoc support images or only text?**
+> **A:** Text only. `mcpdoc`'s `fetch_docs` tool scrapes web pages and returns their text/Markdown content. It does not download, process, or return images embedded in those pages. If documentation relies on diagrams or screenshots, that visual information is invisible to the agent. For image-heavy content, you'd need a multimodal RAG pipeline that extracts images and describes them with a vision model. Note: the MCP protocol itself supports multimodal responses (images, audio), but `mcpdoc` specifically does not use this capability.
 
 ---
 
