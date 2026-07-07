@@ -82,6 +82,7 @@ Adaptive retrieval with self-correction — routing, document grading, hallucina
 *Folder: [`/17-introduction-to-mcp`](./17-introduction-to-mcp)*
 Model Context Protocol — the universal standard for exposing tools, resources, and context to LLMs.
 * [23. MCP Theory & Concepts (Protocol, Transports, Tools/Resources/Prompts, Interceptors)](./17-introduction-to-mcp/23_MCP_Theory_And_Concepts.md)
+* [24. MCP — Eden's Course Notes (Why MCP, Tool Calling, Architecture, Servers)](./17-introduction-to-mcp/24_MCP_Eden_Course_Notes.md)
 
 
 
