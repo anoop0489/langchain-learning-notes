@@ -84,6 +84,11 @@ Model Context Protocol — the universal standard for exposing tools, resources,
 * [23. MCP Theory & Concepts (Protocol, Transports, Tools/Resources/Prompts, Interceptors)](./17-introduction-to-mcp/23_MCP_Theory_And_Concepts.md)
 * [24. MCP — Eden's Course Notes (Why MCP, Tool Calling, Architecture, Servers)](./17-introduction-to-mcp/24_MCP_Eden_Course_Notes.md)
 
+### Section 18: Using a Pre-Built MCP Server 🔧
+*Folder: [`/18-prebuilt-mcp-server`](./18-prebuilt-mcp-server)*
+Hands-on integration of a pre-built MCP server (mcpdoc) with AI clients (Cursor, Claude Desktop).
+* [25. Pre-Built MCP Server (mcpdoc, llms.txt, MCP Inspector, Claude Desktop Integration)](./18-prebuilt-mcp-server/25_Prebuilt_MCP_Server.md)
+
 
 
 ## 📖 Reference Guides
