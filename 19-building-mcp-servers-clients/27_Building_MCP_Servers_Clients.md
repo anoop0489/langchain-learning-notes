@@ -43,7 +43,7 @@
 | 1 | [The Learning Path (Ch. 134)](#1-the-learning-path-ch-134) | Why we build servers before clients |
 | 2 | [Project Setup (Ch. 135)](#2-project-setup-ch-135) | Dependencies and boilerplate |
 | 3 | [Building MCP Servers (Ch. 136)](#3-building-mcp-servers-ch-136) | Math server (stdio) + Weather server (SSE) |
-| 4 | [LangChain vs MCP Tools — The Conceptual Bridge (Ch. 139)](#4-langchain-vs-mcp-tools--the-conceptual-bridge-ch-139) | Why the adapter exists, similarities and differences |
+| 4 | [LangChain vs MCP Tools — The Conceptual Bridge (Ch. 139)](#4-langchain-vs-mcp-tools--the-conceptual-bridge-ch-139) | Why the adapter exists, `/sse` vs `/mcp`, what an MCP client is, Claude Desktop vs Python |
 | 5 | [Building the MCP Client (Ch. 137–138, 140–141)](#5-building-the-mcp-client-ch-137138-140141) | Connecting servers to a LangGraph agent |
 | 6 | [The Full Working Example](#6-the-full-working-example) | Complete, corrected source code |
 | 7 | [Interview Q&A Anchors](#7-interview-qa-anchors) | Quick-fire answers |
@@ -235,6 +235,73 @@ Both systems inject tool descriptions into the LLM's prompt so the model can dec
 ### The Key Value Proposition
 
 > You can leverage **any MCP server that someone else wrote** (hundreds exist in the MCP ecosystem) in your LangGraph agent without rewriting the tools in LangChain format. The adapter does the translation automatically.
+
+### Understanding `/sse` vs `/mcp` Endpoints
+
+When you run an MCP server with HTTP-based transport, it exposes a URL endpoint that clients connect to. The **path** depends on which transport you choose:
+
+| Transport | Server code | Endpoint exposed | Status |
+|-----------|-------------|-----------------|--------|
+| SSE (legacy) | `mcp.run(transport="sse")` | `http://localhost:8000/sse` | Deprecated |
+| Streamable HTTP | `mcp.run(transport="http")` | `http://localhost:8000/mcp` | Current (recommended) |
+
+These are just default URL paths the MCP SDK auto-generates — they're not magic. Think of them like any REST endpoint (`/api/users`, `/health`). The SDK picks `/sse` or `/mcp` as convention.
+
+In the multi-server client, you specify the matching endpoint:
+- Weather server uses `transport="sse"` → client connects to `http://localhost:8000/sse`
+- If you switch to `transport="http"` → client connects to `http://localhost:8000/mcp`
+
+### What Is "an MCP Client"?
+
+An MCP client is **any application that connects to an MCP server to use its tools**. It's a role, not a specific product.
+
+```
+MCP CLIENT (consumer)          MCP SERVER (provider)
+─────────────────────          ─────────────────────
+Claude Desktop            ───► GitHub MCP server
+Cursor IDE               ───► Filesystem MCP server
+YOUR Python script       ───► YOUR math_server.py
+VS Code Copilot          ───► Database MCP server
+```
+
+### Claude Desktop vs Your Python Client
+
+Claude Desktop has its own **built-in** MCP client (not Python). You configure it via JSON only:
+
+```json
+// claude_desktop_config.json (Section 18)
+{
+  "mcpServers": {
+    "math": {
+      "command": "python",
+      "args": ["C:/Dev/akgit/19-building-mcp-servers-clients/src/servers/math_server.py"]
+    }
+  }
+}
+```
+
+Claude reads this, launches the subprocess, speaks MCP protocol, discovers tools — all automatically. No Python client code needed.
+
+**Your Python script** does the same thing, but in code:
+
+| | Claude Desktop | Your Python script |
+|---|---|---|
+| **MCP client code** | Built-in (you never see it) | You write it (`MultiServerMCPClient` or raw `stdio_client`) |
+| **Configuration** | JSON config file | Python code |
+| **Who launches the server?** | Claude Desktop does | Your script does (via `StdioServerParameters`) |
+| **Who calls the tools?** | Claude's LLM decides | Your LLM (GPT-4o) decides via `create_agent` |
+| **Language** | Doesn't matter — it's MCP protocol | Python |
+
+Both do the **exact same thing** under the hood:
+
+```
+1. Launch server subprocess (stdio) or connect to URL (http)
+2. Send: "initialize" handshake
+3. Send: "tools/list" → get back tool definitions
+4. Send: "tools/call" with arguments → get back results
+```
+
+> **Why `langchain-mcp-adapters` exists:** LangChain agents need tools in a specific Python format (`BaseTool` objects). Claude Desktop doesn't need an adapter — it speaks MCP natively. Your Python code needs the adapter to translate MCP tools into LangChain-compatible tools.
 
 ---
 
