@@ -27,6 +27,11 @@ Each module adds its own dependencies. Here's the full list across the course:
 | **09 - RAG (Embeddings & Retrieval)** | `uv add langchain-pinecone langchain-community langchain-text-splitters pymupdf pypdf pdf2image` | Vector store, PDF loaders, chunking |
 | **10 - Documentation Assistant** | `uv add langchain-tavily streamlit` | Web crawling (Tavily), chat UI (Streamlit) |
 | **13 - LangGraph Fundamentals** | `uv add langgraph` | Stateful agent orchestration, checkpointers, streaming |
+| **14 - Reflection Agent** | *(no new packages)* | Uses `langgraph` + `langchain-openai` from earlier modules |
+| **15 - Reflexion Agent** | `uv add langchain-tavily` | Web search tool for iterative refinement |
+| **16 - Agentic RAG** | `uv add langchain-chroma langchain-community` | Local vector store (Chroma), document loaders (WebBaseLoader) |
+| **17 - Introduction to MCP** | *(documentation only)* | Conceptual overview — no Python packages |
+| **18 - Pre-built MCP Server** | *(external tool: `npx @nicepkg/mcpdoc`)* | Uses npx/Node.js, not a pip package |
 | **19 - Building MCP Servers & Clients** | `uv add langchain-mcp-adapters langgraph langchain-openai` | MCP↔LangChain bridge, agent framework |
 
 > 💡 Some packages listed above depend on earlier modules. For example, Module 10 still needs `langchain-openai` and `langchain-pinecone` from Module 09.
