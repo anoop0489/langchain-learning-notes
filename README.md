@@ -89,6 +89,12 @@ Model Context Protocol — the universal standard for exposing tools, resources,
 Hands-on integration of a pre-built MCP server (mcpdoc) with AI clients (Cursor, Claude Desktop).
 * [25. Pre-Built MCP Server (mcpdoc, llms.txt, MCP Inspector, Claude Desktop Integration)](./18-prebuilt-mcp-server/25_Prebuilt_MCP_Server.md)
 
+### Section 19: Building MCP Servers & Clients 🔧🔌
+*Folder: [`/19-building-mcp-servers-clients`](./19-building-mcp-servers-clients)*
+Building custom MCP servers and connecting them to LangGraph agents via `langchain-mcp-adapters`.
+* [26. LangChain MCP Adapters — Official Documentation Reference](./19-building-mcp-servers-clients/26_LangChain_MCP_Adapters_Reference.md)
+* [27. Building MCP Servers & Clients — Eden Course Notes (Ch. 134–141)](./19-building-mcp-servers-clients/27_Building_MCP_Servers_Clients.md)
+
 
 
 ## 📖 Reference Guides

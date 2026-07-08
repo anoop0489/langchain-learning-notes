@@ -426,7 +426,7 @@ A common source of confusion: mcpdoc fetches relevant documentation and gives it
 **Yes, the goal is the same:** retrieve relevant information → give it to the LLM → get a grounded answer. That's retrieval-augmented generation in spirit. The difference is the **retrieval mechanism** and **when processing happens:**
 
 | | Traditional RAG | mcpdoc (index + fetch) |
-|--|-----------------|------------------------|
+|---|-----------------|------------------------|
 | **How it finds relevant content** | Embedding math — cosine similarity over vectors | LLM reads a table of contents and picks the right URL |
 | **Pre-processing required** | Yes — chunk all docs, embed, store in vector DB (upfront, offline) | None — fetches live at query time |
 | **What gets retrieved** | Small chunks (200-500 tokens) from across many documents | One entire page at a time |

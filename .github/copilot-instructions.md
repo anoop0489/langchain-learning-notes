@@ -159,5 +159,6 @@ XX-section-name/
 | 14. Reflection Agent | `14-reflection-agent/` | ✅ Complete |
 | 15. Reflexion Agent | `15-reflexion-agent/` | ✅ Complete |
 | 16. Agentic RAG | `16-agentic-rag/` | ✅ Complete |
-| 17. Introduction to MCP | `17-introduction-to-mcp/` | 🔄 In Progress |
-| 18. Pre-Built MCP Server | `18-prebuilt-mcp-server/` | 🔄 In Progress |
+| 17. Introduction to MCP | `17-introduction-to-mcp/` | ✅ Complete |
+| 18. Pre-Built MCP Server | `18-prebuilt-mcp-server/` | ✅ Complete |
+| 19. Building MCP Servers & Clients | `19-building-mcp-servers-clients/` | 🔄 In Progress |
