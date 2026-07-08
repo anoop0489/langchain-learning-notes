@@ -307,6 +307,42 @@ Both do the **exact same thing** under the hood:
 
 ## 5. Building the MCP Client (Ch. 137–138, 140–141)
 
+### SingleServer vs MultiServer — What the Names Mean
+
+The parenthetical labels describe **which transport types each pattern supports in practice**:
+
+- **SingleServer (stdio only)** — you code for one specific transport, one connection at a time
+- **MultiServer (stdio + SSE)** — you declare any mix of transports in one dict, get one unified tool list
+
+```
+SINGLE SERVER PATTERN:
+┌─────────────┐         ┌──────────────┐
+│ Your code   │──stdio──│ math_server  │   (you manage the pipe)
+│ (manual)    │         │              │
+└─────────────┘         └──────────────┘
+
+MULTI SERVER PATTERN:
+                        ┌──────────────┐
+              ┌──stdio──│ math_server  │
+┌───────────┐ │         └──────────────┘
+│ MultiSrv  │─┤
+│ MCPClient │ │         ┌──────────────┐
+└───────────┘ └──http───│ weather_srv  │   (client manages everything)
+                        └──────────────┘
+```
+
+| | SingleServer (raw) | MultiServer (managed) |
+|---|---|---|
+| **Servers** | One at a time | Multiple simultaneously |
+| **Connection management** | YOU do it (nested `async with`) | Client does it internally |
+| **Transport** | Only what you code (stdio OR http — different code paths) | Mix freely in one dict (stdio + sse + http) |
+| **Tool list** | From one server only | Unified from ALL servers |
+| **Session lifecycle** | Explicit (you open/close) | Automatic (new session per call by default) |
+| **Code complexity** | More boilerplate | One dict + `get_tools()` |
+| **When to use** | Fine-grained control, single integration, testing | Production agents that need multiple tools |
+
+**Why the raw pattern is "stdio only" in practice:** If you wanted to connect to an HTTP server with the raw pattern, you'd use a completely different client function (`streamablehttp_client` instead of `stdio_client`). You can't mix them — each `async with` block is one connection to one server using one transport. `MultiServerMCPClient` abstracts this away.
+
 ### The SingleServer Pattern (stdio only)
 
 When you connect to just one server:
