@@ -32,9 +32,9 @@ import truststore
 truststore.inject_into_ssl()
 
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 
 load_dotenv()
 
@@ -80,7 +80,7 @@ async def main():
                 "transport": "stdio",
             },
             "weather": {
-                "url": "http://localhost:8000/sse",
+                "url": "http://127.0.0.1:8000/sse",
                 "transport": "sse",
             },
         }
@@ -93,7 +93,7 @@ async def main():
 
     # Create a ReAct agent that has access to ALL tools from both servers.
     # The LLM decides which tool to call based on the user's question.
-    agent = create_react_agent(llm, tools)
+    agent = create_agent(llm, tools)
 
     # Math question — will route to the math server's add/multiply tools
     print("-" * 60)

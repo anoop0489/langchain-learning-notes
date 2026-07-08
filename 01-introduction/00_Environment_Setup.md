@@ -27,12 +27,13 @@ Each module adds its own dependencies. Here's the full list across the course:
 | **09 - RAG (Embeddings & Retrieval)** | `uv add langchain-pinecone langchain-community langchain-text-splitters pymupdf pypdf pdf2image` | Vector store, PDF loaders, chunking |
 | **10 - Documentation Assistant** | `uv add langchain-tavily streamlit` | Web crawling (Tavily), chat UI (Streamlit) |
 | **13 - LangGraph Fundamentals** | `uv add langgraph` | Stateful agent orchestration, checkpointers, streaming |
+| **19 - Building MCP Servers & Clients** | `uv add langchain-mcp-adapters langgraph langchain-openai` | MCP↔LangChain bridge, agent framework |
 
 > 💡 Some packages listed above depend on earlier modules. For example, Module 10 still needs `langchain-openai` and `langchain-pinecone` from Module 09.
 
 Or install everything at once (matches `pyproject.toml`):
 ```bash
-uv add langchain langchain-openai langchain-ollama langchain-pinecone langchain-community langchain-text-splitters langchain-tavily langgraph langsmith ollama python-dotenv truststore httpx requests urllib3 pymupdf pypdf pdf2image streamlit
+uv add langchain langchain-openai langchain-ollama langchain-pinecone langchain-community langchain-text-splitters langchain-tavily langchain-mcp-adapters langgraph langsmith ollama python-dotenv truststore httpx requests urllib3 pymupdf pypdf pdf2image streamlit langchain-chroma tiktoken
 ```
 
 ---

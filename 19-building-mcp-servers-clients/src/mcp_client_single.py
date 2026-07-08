@@ -27,10 +27,10 @@ import truststore
 truststore.inject_into_ssl()
 
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -83,7 +83,7 @@ async def main():
             print(f"🛠️  Loaded {len(tools)} tools: {[t.name for t in tools]}")
 
             # Create a ReAct agent that can use the MCP tools.
-            agent = create_react_agent(llm, tools)
+            agent = create_agent(llm, tools)
 
             print("-" * 60)
             question = "What is 54 + 2 * 3?"
