@@ -91,7 +91,7 @@ async def main():
     tools = await client.get_tools()
     print(f"✅ Loaded {len(tools)} tools: {[t.name for t in tools]}")
 
-    # Create a ReAct agent that has access to ALL tools from both servers.
+    # Create an agent that has access to ALL tools from both servers.
     # The LLM decides which tool to call based on the user's question.
     agent = create_agent(llm, tools)
 

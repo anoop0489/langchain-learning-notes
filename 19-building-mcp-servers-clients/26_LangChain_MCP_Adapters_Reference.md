@@ -27,7 +27,7 @@
 | **langchain-mcp-adapters** | Bridge between MCP and LangChain | A Python package that converts MCP tools into LangChain-compatible tools, enabling LangGraph agents to use any MCP server without manual adaptation. |
 | **MultiServerMCPClient** | Connect to many MCP servers at once | A client class that manages connections to multiple MCP servers (stdio, SSE, HTTP) and exposes all their tools as a unified list for LangGraph agents. |
 | **load_mcp_tools()** | Convert MCP tools → LangChain tools | A function that takes an active MCP `ClientSession` and returns a list of LangChain-compatible tool objects that wrap the MCP server's tools. |
-| **create_react_agent** | LangGraph's pre-built ReAct agent | A convenience function from `langgraph.prebuilt` that creates a ReAct agent given an LLM and a list of tools. Handles the tool-calling loop automatically. |
+| **create_agent** | Create an agent from model + tools | A convenience function from `langchain.agents` that creates an agent given an LLM (or model string like `"openai:gpt-4.1"`) and a list of tools. Handles the tool-calling loop automatically. |
 | **FastMCP** | Quick MCP server builder | A class from the `mcp` SDK that provides a decorator-based API for defining MCP tools, resources, and prompts with minimal boilerplate. |
 | **StdioServerParameters** | Config for launching stdio servers | A dataclass specifying how to launch an MCP server as a subprocess (command, args, env vars). Used by clients connecting via stdio transport. |
 | **handle_tool_errors** | Graceful error handling flag | When `True` (default), MCP execution errors are returned as error `ToolMessage`s so the agent can self-correct. When `False`, errors raise exceptions. |
@@ -109,7 +109,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 server_params = StdioServerParameters(
 	command="python",
@@ -125,7 +125,7 @@ async with stdio_client(server_params) as (read, write):
 		tools = await load_mcp_tools(session)
 
 		# Create agent and invoke
-		agent = create_react_agent("openai:gpt-4.1", tools)
+		agent = create_agent("openai:gpt-4.1", tools)
 		result = await agent.ainvoke({"messages": "what's (3 + 5) x 12?"})
 ```
 
@@ -137,7 +137,7 @@ async with stdio_client(server_params) as (read, write):
 3. load_mcp_tools() calls session.list_tools() via MCP protocol
 4. Each MCP tool is wrapped in a LangChain Tool object
    (name, description, args schema → all preserved)
-5. create_react_agent() binds these tools to the LLM
+5. create_agent() binds these tools to the LLM
 6. Agent invokes tools via MCP protocol transparently
 ```
 
@@ -175,7 +175,7 @@ python weather_server.py
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 client = MultiServerMCPClient(
 	{
@@ -192,7 +192,7 @@ client = MultiServerMCPClient(
 	}
 )
 tools = await client.get_tools()
-agent = create_react_agent("openai:gpt-4.1", tools)
+agent = create_agent("openai:gpt-4.1", tools)
 math_response = await agent.ainvoke({"messages": "what's (3 + 5) x 12?"})
 weather_response = await agent.ainvoke({"messages": "what is the weather in NYC?"})
 ```
@@ -218,14 +218,14 @@ The modern MCP transport (replaced SSE as of spec 2025-03-26).
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
+from langchain.agents import create_agent
 from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
 
 async with streamablehttp_client("http://localhost:3000/mcp") as (read, write, _):
 	async with ClientSession(read, write) as session:
 		await session.initialize()
 		tools = await load_mcp_tools(session)
-		agent = create_react_agent("openai:gpt-4.1", tools)
+		agent = create_agent("openai:gpt-4.1", tools)
 		result = await agent.ainvoke({"messages": "what's (3 + 5) x 12?"})
 ```
 
@@ -233,7 +233,7 @@ async with streamablehttp_client("http://localhost:3000/mcp") as (read, write, _
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 client = MultiServerMCPClient(
 	{
@@ -244,7 +244,7 @@ client = MultiServerMCPClient(
 	}
 )
 tools = await client.get_tools()
-agent = create_react_agent("openai:gpt-4.1", tools)
+agent = create_agent("openai:gpt-4.1", tools)
 result = await agent.ainvoke({"messages": "what's (3 + 5) x 12?"})
 ```
 
@@ -256,7 +256,7 @@ Pass authentication or custom headers when connecting to HTTP-based MCP servers.
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 client = MultiServerMCPClient(
 	{
@@ -271,7 +271,7 @@ client = MultiServerMCPClient(
 	}
 )
 tools = await client.get_tools()
-agent = create_react_agent("openai:gpt-4.1", tools)
+agent = create_agent("openai:gpt-4.1", tools)
 response = await agent.ainvoke({"messages": "what is the weather in NYC?"})
 ```
 
@@ -352,11 +352,11 @@ math_response = await graph.ainvoke({"messages": "what's (3 + 5) x 12?"})
 weather_response = await graph.ainvoke({"messages": "what is the weather in NYC?"})
 ```
 
-### When to Use StateGraph vs create_react_agent
+### When to Use StateGraph vs create_agent
 
 | Use Case | Which to Use |
 |----------|-------------|
-| Simple tool-calling agent | `create_react_agent` — handles the loop for you |
+| Simple tool-calling agent | `create_agent` — handles the loop for you |
 | Custom routing logic (e.g., human-in-the-loop, parallel tool calls) | `StateGraph` — full control over graph topology |
 | Need to add memory, interrupts, or conditional branching | `StateGraph` — compose with other LangGraph features |
 
@@ -369,7 +369,7 @@ Deploy your MCP-powered agent as a hosted service:
 ```python
 # graph.py
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 async def make_graph():
 	client = MultiServerMCPClient(
@@ -386,7 +386,7 @@ async def make_graph():
 		}
 	)
 	tools = await client.get_tools()
-	agent = create_react_agent("openai:gpt-4.1", tools)
+	agent = create_agent("openai:gpt-4.1", tools)
 	return agent
 ```
 

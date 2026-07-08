@@ -59,7 +59,7 @@
 | **load_mcp_tools()** | MCP session → LangChain tools | Takes an active MCP `ClientSession`, queries the server for its tool list, and wraps each one as a LangChain `Tool` object. |
 | **FastMCP** | Easy server creation | A decorator-based API from the `mcp` SDK for defining tools, resources, and prompts. `@mcp.tool()` is all you need. |
 | **StdioServerParameters** | How to launch a subprocess server | Specifies the command and args to start an MCP server as a child process. Client and server communicate via stdin/stdout. |
-| **create_react_agent** | Pre-built ReAct agent | LangGraph's convenience function that creates a tool-calling agent with automatic loop handling. Just provide an LLM and tools. |
+| **create_agent** | Create agent from model + tools | A convenience function from `langchain.agents` that creates a tool-calling agent with automatic loop handling. Accepts a model string (e.g., `"openai:gpt-4.1"`) or a `BaseChatModel` instance plus tools. |
 
 ---
 
@@ -92,7 +92,7 @@ uv add langchain-mcp-adapters langgraph langchain-openai python-dotenv
 | Package | Purpose |
 |---------|---------|
 | `langchain-mcp-adapters` | The bridge package (also installs `mcp` SDK automatically) |
-| `langgraph` | Agent framework (provides `create_react_agent`) |
+| `langgraph` | Agent framework (dependency of `langchain-mcp-adapters`) |
 | `langchain-openai` | OpenAI LLM integration |
 | `python-dotenv` | Load `.env` file |
 
@@ -248,7 +248,7 @@ When you connect to just one server:
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o")
@@ -263,7 +263,7 @@ async with stdio_client(server_params) as (read, write):
 		await session.initialize()
 		tools = await load_mcp_tools(session)
 
-		agent = create_react_agent(llm, tools)
+		agent = create_agent(llm, tools)
 		result = await agent.ainvoke(
 			{"messages": [HumanMessage(content="What is 54 + 2 * 3?")]}
 		)
@@ -276,7 +276,7 @@ When you connect to multiple servers at once:
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o")
@@ -296,7 +296,7 @@ client = MultiServerMCPClient(
 )
 tools = await client.get_tools()
 
-agent = create_react_agent(llm, tools)
+agent = create_agent(llm, tools)
 math_result = await agent.ainvoke({"messages": "what's (3 + 5) x 12?"})
 weather_result = await agent.ainvoke({"messages": "what is the weather in NYC?"})
 ```
@@ -369,5 +369,5 @@ uv run src/mcp_client_multi.py
 
 - [langchain-mcp-adapters GitHub](https://github.com/langchain-ai/langchain-mcp-adapters)
 - [MCP Python SDK (FastMCP)](https://github.com/modelcontextprotocol/python-sdk)
-- [LangGraph create_react_agent](https://langchain-ai.github.io/langgraph/reference/prebuilt/#create_react_agent)
+- [langchain.agents.create_agent](https://python.langchain.com/api_reference/langchain/agents.html)
 - [MCP Transport Specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports)
