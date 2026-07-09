@@ -161,4 +161,5 @@ XX-section-name/
 | 16. Agentic RAG | `16-agentic-rag/` | ✅ Complete |
 | 17. Introduction to MCP | `17-introduction-to-mcp/` | ✅ Complete |
 | 18. Pre-Built MCP Server | `18-prebuilt-mcp-server/` | ✅ Complete |
-| 19. Building MCP Servers & Clients | `19-building-mcp-servers-clients/` | 🔄 In Progress |
+| 19. Building MCP Servers & Clients | `19-building-mcp-servers-clients/` | ✅ Complete |
+| 20. Useful LLM Dev Tools | `20-useful-llm-dev-tools/` | ✅ Complete |

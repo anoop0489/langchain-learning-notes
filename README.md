@@ -95,6 +95,11 @@ Building custom MCP servers and connecting them to LangGraph agents via `langcha
 * [26. LangChain MCP Adapters — Official Documentation Reference](./19-building-mcp-servers-clients/26_LangChain_MCP_Adapters_Reference.md)
 * [27. Building MCP Servers & Clients — Eden Course Notes (Ch. 134–141)](./19-building-mcp-servers-clients/27_Building_MCP_Servers_Clients.md)
 
+### Section 20: Useful Tools When Developing LLM Applications 🛠️
+*Folder: [`/20-useful-llm-dev-tools`](./20-useful-llm-dev-tools)*
+Essential developer tools: live docs MCP, prompt hub, text splitting playground, and framework comparison.
+* [28. Useful LLM Dev Tools — MCP Docs Server, Hub, Text Splitters, LangChain vs LlamaIndex (Ch. 143–146)](./20-useful-llm-dev-tools/28_Useful_LLM_Dev_Tools.md)
+
 
 
 ## 📖 Reference Guides

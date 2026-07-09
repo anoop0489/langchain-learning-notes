@@ -33,6 +33,7 @@ Each module adds its own dependencies. Here's the full list across the course:
 | **17 - Introduction to MCP** | *(documentation only)* | Conceptual overview — no Python packages |
 | **18 - Pre-built MCP Server** | *(external tool: `npx @nicepkg/mcpdoc`)* | Uses npx/Node.js, not a pip package |
 | **19 - Building MCP Servers & Clients** | `uv add langchain-mcp-adapters langgraph langchain-openai` | MCP↔LangChain bridge, agent framework |
+| **20 - Useful LLM Dev Tools** | *(external tools only)* | No new pip packages — uses MCP server config, LangSmith Hub, Streamlit playground |
 
 > 💡 Some packages listed above depend on earlier modules. For example, Module 10 still needs `langchain-openai` and `langchain-pinecone` from Module 09.
 
