@@ -100,6 +100,12 @@ Building custom MCP servers and connecting them to LangGraph agents via `langcha
 Essential developer tools: live docs MCP, prompt hub, text splitting playground, and framework comparison.
 * [28. Useful LLM Dev Tools — MCP Docs Server, Hub, Text Splitters, LangChain vs LlamaIndex (Ch. 143–146)](./20-useful-llm-dev-tools/28_Useful_LLM_Dev_Tools.md)
 
+### Section 21: Deep Agents 🤖
+*Folder: [`/21-deep-agents`](./21-deep-agents)*
+LangChain's "agent harness" — built-in task planning, virtual filesystem, subagents, skills, memory, and human-in-the-loop for complex, long-running tasks.
+* [29. Deep Agents Theory & Concepts (Harness, Filesystem, Subagents, Skills, Memory, Steering)](./21-deep-agents/29_Deep_Agents_Theory_And_Concepts.md)
+* [30. Deep Agents — Eden's Course Notes (Taxonomy, Planning, Subagents, File Systems, Context Engineering) (Ch. 147–152)](./21-deep-agents/30_Deep_Agents_Eden_Course_Notes.md)
+
 
 
 ## 📖 Reference Guides

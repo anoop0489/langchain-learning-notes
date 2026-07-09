@@ -163,3 +163,4 @@ XX-section-name/
 | 18. Pre-Built MCP Server | `18-prebuilt-mcp-server/` | ✅ Complete |
 | 19. Building MCP Servers & Clients | `19-building-mcp-servers-clients/` | ✅ Complete |
 | 20. Useful LLM Dev Tools | `20-useful-llm-dev-tools/` | ✅ Complete |
+| 21. Deep Agents | `21-deep-agents/` | ✅ Complete |
