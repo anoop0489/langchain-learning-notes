@@ -165,3 +165,4 @@ XX-section-name/
 | 20. Useful LLM Dev Tools | `20-useful-llm-dev-tools/` | ✅ Complete |
 | 21. Deep Agents | `21-deep-agents/` | ✅ Complete |
 | 22. Deep Agent Skills | `22-deep-agent-skills/` | ✅ Complete |
+| 23. LangChain Glossary | `23-langchain-glossary/` | ✅ Complete |

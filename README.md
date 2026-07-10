@@ -112,6 +112,12 @@ Packaging specialized workflows, domain knowledge, and custom instructions as re
 * [31. Deep Agents Overview — Official Documentation Reference (Prerequisite: Harness, Capabilities, Skills Context)](./22-deep-agent-skills/31_Deep_Agents_Official_Overview_Reference.md)
 * [32. Deep Agent Skills — Eden's Course Notes (Progressive Disclosure, Skill Middleware, `skills.py` Source) (Ch. 153–157)](./22-deep-agent-skills/32_Deep_Agent_Skills_Eden_Course_Notes.md)
 
+### Section 23: LangChain Glossary 📖
+*Folder: [`/23-langchain-glossary`](./23-langchain-glossary)*
+Cross-cutting concept references for LLM application development — clear, distilled explanations of the essential building blocks.
+* [33. Memory & Context in LangChain / LangGraph (Short-term, Long-term, Checkpointers, Stores, Context Engineering)](./23-langchain-glossary/33_Memory_And_Context_Reference.md)
+* [34. LangChain Glossary — Eden's Course Notes (ChatModels, Messages, TextSplitter, Document, Stuff/Map-Reduce/Refine, Memory) (Ch. 158–164)](./23-langchain-glossary/34_LangChain_Glossary_Eden_Course_Notes.md)
+
 
 
 ## 📖 Reference Guides
