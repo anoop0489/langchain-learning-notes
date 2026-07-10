@@ -1,0 +1,162 @@
+***** Section 24: Industry Insights: Building Production Agents with Assaf Elovic
+
+*** Chapter 165: The Core Architecture of Production-Grade AI
+Hey there, Eden here.
+So I'm here with Assaf Elovic,
+which is co-founder of Tavily.
+He's the creator of GPT Researcher
+and was the head of AI of monday.com.
+Assaf brings to the table a lot of experience
+implementing AI systems and AI agents
+and leading engineering organizations.
+And today we're going to be focusing on LinkChain
+and building AI systems with LinkChain.
+Assaf, what does a production-grade AI architecture
+look today in 2026?
+Let's start from the top.
+So, obviously you must have observability,
+and when I say observability, I think that observability
+for agents and AI is very different from observability
+that is used for human monitoring over your products.
+And for this reasons, there are products like LinkSmith
+that do an amazing job in how we,
+you can really look at the stack trace
+of what agents are trying to do
+and what they're trying to achieve within the system,
+across the various agents that you have in production.
+I think another part of observability is also how,
+what are users trying to get from your agent?
+And a lot, and many times that comes actually
+as natural language.
+It's very different than humans
+who are clicking buttons in your UI, right?
+So, being able to understand natural language
+and how that reflects what the agent eventually tries to do
+and whether it succeeds or not, I think
+that entire workflow requires very specific
+monitoring for AI agents.
+So, obviously observability is critical.
+B is AI gateway.
+I think that AI gateway is, I'm trying to think of
+what would resemble that in before AI,
+but basically AI gateway is the gateway
+to where you define, again, guardrails, permissions,
+and models, model types, prompt security,
+making sure that you always have uptime
+in terms of model usage.
+Many times we've seen also in the past that models
+would get rate limited or would would go down.
+So, I think like being able to have a smart router
+that knows how to both leverage different models
+but also route to different models based
+on scale and use cases,
+I think that's a critical factor.
+And this goes on.
+Obviously we can dive into the actual AI architecture,
+but I think that's very custom
+and specific to the use case that companies build.
+But obviously, memory is critical.
+Being able to observe memory, being able to object memory,
+being able to monitor memory,
+cross-company data context is critical.
+Semantic search ranking is critical.
+What used to be called RAG now is changing.
+I can go on for a while,
+but I think that's like very high level
+or like the top things that I would make sure.
+
+
+*** Chapter 166: How to Make Users Trust Your AI Agents
+So, on a follow-up on that,
+from your experience,
+what makes an agent more reliable today?
+I think it's a generic question
+in the sense that reliability could mean many things,
+so I'll take your question
+to how users perceive your agent as being reliable
+because I think a lot has been written,
+and I think you show a lot in your courses
+about how you can build an agent to be more stable,
+you know, reliable technically,
+but I think very little talk about what it means for a user
+to feel that an agent is reliable,
+and for that,
+I've actually coined a scoring mechanism
+together with Harrison, the CEO of LangChain,
+which is called FAIR,
+which is basically how we perceive agents
+in a sense of trusting those agents,
+and I think for that,
+there's many things that you should watch out for
+as you're building the product
+or user experience side of the agent.
+I think one is explainability, right?
+So, when users use your agent,
+you wanna make sure that they know how to explain
+how they reached a certain task
+or a specific action they took, right,
+because agents are a black box,
+and users, when agents do mistakes,
+if users cannot understand
+why they made the specific actions,
+then that hurts reliability.
+Another factor is transparency, right?
+So, you wanna really be able to show,
+what are we using behind the scenes
+in order to take those specific actions.
+And I think three is feedback loops.
+Being able to have feedback loops back to the agent
+is maybe one of the most underrated critical factor.
+If I understand why and how agents
+made and took their decision,
+but I have no way of giving them back feedback
+to improve in the next time that they make a decision,
+then how can I define them as reliable?
+How can I feel that I can make them reliable over time?
+It's very similar to how we work with humans.
+And lastly, I think,
+and this is a more obvious one, is evals.
+Is basically you want from the developer side
+or the company side,
+you want to have your own set of evals
+you can constantly test
+as you're deploying new versions of your agent,
+so you can make sure that at least it works
+in terms of reliability
+for the specific critical and core cases that you plan.
+
+*** Chapter 167: Tutorial: Building a Lean AI Feedback Loop
+So I want to follow up on the feedback loop,
+so how does a lean version of a feedback loop look like?
+I think maybe the easiest thing I would do is,
+and this depends if the agent
+is product-level or user-level.
+Some agents are more personalized,
+and some products deploy agents that should work differently
+based on different users, and some are more company-level.
+What I would do is I would keep Markdown files that,
+I don't know, might be empty
+when your user first interacts with it,
+and then every time a user gives feedback,
+with just simple natural language, you just update the file,
+and then that file gets injected to the agent
+in every future task.
+It's super simple,
+and literally, it could take a day of work,
+and you have a feedback loop.
+I think one important point is that the agent is the one
+that updates the file, not the user, not the human user.
+The human user interacts with you through natural language.
+The agent needs to oversee the file
+and make sure it constantly updates it,
+but that's the quickest win that we've learned that works.
+Yeah, this is super interesting, because you can go
+and implement this with a LangChain middleware,
+where you can add a step, maybe before a tool call,
+or maybe, I think, before making an LLM call,
+that is going to do something,,
+so you can write your custom code there,
+and this custom code can go and look to this Markdown file,
+and maybe update it or even go and take it
+and update the context.
+

@@ -118,10 +118,10 @@ Cross-cutting concept references for LLM application development — clear, dist
 * [33. Memory & Context in LangChain / LangGraph (Short-term, Long-term, Checkpointers, Stores, Context Engineering)](./23-langchain-glossary/33_Memory_And_Context_Reference.md)
 * [34. LangChain Glossary — Eden's Course Notes (ChatModels, Messages, TextSplitter, Document, Stuff/Map-Reduce/Refine, Memory) (Ch. 158–164)](./23-langchain-glossary/34_LangChain_Glossary_Eden_Course_Notes.md)
 
-### Section 24: Industry Insights — Production Agents 🏭
-*Folder: [`/24-industry-insights-production-agents`](./24-industry-insights-production-agents)*
-A fireside chat with **Assaf Elovic** (Tavily co-founder, GPT Researcher creator, ex-Head of AI at monday.com) on production agent architecture, user trust, and lean feedback loops.
-* [35. Building Production Agents with Assaf Elovic (Observability, AI Gateway, CAIR Trust Framework, Feedback Loops) (Ch. 165–167)](./24-industry-insights-production-agents/35_Production_Agents_With_Assaf_Elovic.md)
+### Section 24: Production-Grade AI Systems 🏭
+*Folder: [`/24-production-grade-ai-systems`](./24-production-grade-ai-systems)*
+A practitioner's field guide to taking LLM/agent systems to production — the platform, reliability, and trust concerns that separate a demo from a real system.
+* [35. Production-Grade AI Systems — What Actually Matters (Observability, AI Gateway, Memory, Retrieval, CAIR, Evals, Feedback Loops)](./24-production-grade-ai-systems/35_Production_Grade_AI_Systems.md)
 
 
 
