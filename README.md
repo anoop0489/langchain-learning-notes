@@ -118,6 +118,11 @@ Cross-cutting concept references for LLM application development — clear, dist
 * [33. Memory & Context in LangChain / LangGraph (Short-term, Long-term, Checkpointers, Stores, Context Engineering)](./23-langchain-glossary/33_Memory_And_Context_Reference.md)
 * [34. LangChain Glossary — Eden's Course Notes (ChatModels, Messages, TextSplitter, Document, Stuff/Map-Reduce/Refine, Memory) (Ch. 158–164)](./23-langchain-glossary/34_LangChain_Glossary_Eden_Course_Notes.md)
 
+### Section 24: Industry Insights — Production Agents 🏭
+*Folder: [`/24-industry-insights-production-agents`](./24-industry-insights-production-agents)*
+A fireside chat with **Assaf Elovic** (Tavily co-founder, GPT Researcher creator, ex-Head of AI at monday.com) on production agent architecture, user trust, and lean feedback loops.
+* [35. Building Production Agents with Assaf Elovic (Observability, AI Gateway, FAIR Trust Model, Feedback Loops) (Ch. 165–167)](./24-industry-insights-production-agents/35_Production_Agents_With_Assaf_Elovic.md)
+
 
 
 ## 📖 Reference Guides

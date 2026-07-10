@@ -166,3 +166,4 @@ XX-section-name/
 | 21. Deep Agents | `21-deep-agents/` | ✅ Complete |
 | 22. Deep Agent Skills | `22-deep-agent-skills/` | ✅ Complete |
 | 23. LangChain Glossary | `23-langchain-glossary/` | ✅ Complete |
+| 24. Industry Insights: Production Agents | `24-industry-insights-production-agents/` | ✅ Complete |
