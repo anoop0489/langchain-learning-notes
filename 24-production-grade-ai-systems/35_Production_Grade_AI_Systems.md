@@ -2,7 +2,7 @@
 
 > **Context:** Section 24. This is a **comprehensive, opinionated field guide** to everything that matters when you build and operate a production-grade AI agent. It is written from first principles — *"if I were the engineer responsible for shipping this, what would I have to get right?"* — and pulls together architecture, retrieval, memory, evaluation, safety, ops, cost, and organizational concerns into one place. It is intentionally broad: use the Table of Contents to jump to what you need. The goal is that you can **design, defend, and operate** a real system, and answer any interview question on the topic with depth.
 
-> 💡 **The thesis.** Building an agent that *works in a demo* is easy. Building one that is **reliable, safe, observable, affordable, and trusted** at scale is 80% of the work — and almost none of that 80% is the "AI" part. It's engineering discipline applied to a non-deterministic component.
+> 💡 **The thesis.** Building an agent that *works in a demo* is easy. Building one that is **reliable, safe, observable, affordable, and trusted** at scale is where most of the effort goes — and, as a rough rule of thumb, only a small fraction of that effort is the "AI" part. It's engineering discipline applied to a non-deterministic component. (The "20% logic / 80% platform" split below is a mental model, not a measured statistic.)
 
 ---
 
@@ -56,7 +56,7 @@
 
 Traditional software is **deterministic**: same input → same output, and you test it exhaustively. An LLM-based system is fundamentally different, and every production concern flows from these properties:
 
-1. **Non-determinism.** The same prompt can yield different outputs. You cannot rely on exact-match tests; you need *evaluation* (statistical/semantic) instead of assertions.
+1. **Non-determinism.** The same prompt can yield different outputs across calls. Setting `temperature=0` *reduces* variance but does **not** guarantee identical outputs (mixture-of-experts routing, floating-point/batching effects, and silent provider updates all contribute). You cannot rely on exact-match tests; you need *evaluation* (statistical/semantic) instead of assertions.
 2. **Probabilistic correctness.** The model is *usually* right, not *always* right. Design assuming it will be wrong some percentage of the time — and make wrong answers cheap to detect and recover from.
 3. **Unbounded input space.** Users type free-form natural language. You cannot enumerate all inputs, so you cannot enumerate all failure modes.
 4. **Opaque reasoning.** The model is a black box; you can't step through its "logic." This makes observability and explainability essential, not optional.
@@ -395,7 +395,7 @@ Two rules: **the agent owns the file, not the human** (users only speak natural 
 - **Progressive rollout** — canary/shadow/A-B new prompts or models against live traffic before full rollout.
 - **Rollback plan** — be able to instantly revert a prompt/model change (config-driven, not code-deploy).
 - **Environment parity** — dev/staging/prod with representative data.
-- **Reproducibility** — pin model versions and seeds where possible; log everything to reconstruct a run.
+- **Reproducibility** — pin model versions; log full inputs/outputs to reconstruct any run. Provider `seed` parameters help but are best-effort only (see Section 1), so don't rely on them for exact reproduction.
 - **Infra** — async workers/queues for long runs, autoscaling for spiky LLM latency, managed vector DB, caches, secrets manager.
 
 ---
@@ -486,7 +486,7 @@ Two rules: **the agent owns the file, not the human** (users only speak natural 
 ## References
 
 - **LangSmith (agent observability & evals)** — https://docs.langchain.com/langsmith
-- **LangGraph (orchestration, HITL, persistence)** — https://docs.langchain.com/oss/python/langgraph/overview
+- **LangGraph (orchestration, HITL, persistence)** — https://langchain-ai.github.io/langgraph/
 - **LangChain middleware** — https://docs.langchain.com/oss/python/langchain/middleware
 - **LangChain memory concepts** — https://docs.langchain.com/oss/python/concepts/memory
 - **Anthropic — Building effective agents** — https://www.anthropic.com/research/building-effective-agents
