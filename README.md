@@ -106,6 +106,12 @@ LangChain's "agent harness" — built-in task planning, virtual filesystem, suba
 * [29. Deep Agents Theory & Concepts (Harness, Filesystem, Subagents, Skills, Memory, Steering)](./21-deep-agents/29_Deep_Agents_Theory_And_Concepts.md)
 * [30. Deep Agents — Eden's Course Notes (Taxonomy, Planning, Subagents, File Systems, Context Engineering) (Ch. 147–152)](./21-deep-agents/30_Deep_Agents_Eden_Course_Notes.md)
 
+### Section 22: Deep Agent Skills 🧩
+*Folder: [`/22-deep-agent-skills`](./22-deep-agent-skills)*
+Packaging specialized workflows, domain knowledge, and custom instructions as reusable `SKILL.md` files loaded via progressive disclosure.
+* [31. Deep Agents Overview — Official Documentation Reference (Prerequisite: Harness, Capabilities, Skills Context)](./22-deep-agent-skills/31_Deep_Agents_Official_Overview_Reference.md)
+* [32. Deep Agent Skills — Eden's Course Notes (Progressive Disclosure, Skill Middleware, `skills.py` Source) (Ch. 153–157)](./22-deep-agent-skills/32_Deep_Agent_Skills_Eden_Course_Notes.md)
+
 
 
 ## 📖 Reference Guides
