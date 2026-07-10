@@ -120,8 +120,8 @@ Cross-cutting concept references for LLM application development — clear, dist
 
 ### Section 24: Production-Grade AI Systems 🏭
 *Folder: [`/24-production-grade-ai-systems`](./24-production-grade-ai-systems)*
-A practitioner's field guide to taking LLM/agent systems to production — the platform, reliability, and trust concerns that separate a demo from a real system.
-* [35. Production-Grade AI Systems — What Actually Matters (Observability, AI Gateway, Memory, Retrieval, CAIR, Evals, Feedback Loops)](./24-production-grade-ai-systems/35_Production_Grade_AI_Systems.md)
+The complete engineering guide to shipping production-grade AI agents — architecture, models, prompting, tools, retrieval, memory, orchestration, gateways, observability, evals, reliability, security, cost, trust (CAIR), MLOps, and governance.
+* [35. Production-Grade AI Agents — The Complete Engineering Guide](./24-production-grade-ai-systems/35_Production_Grade_AI_Systems.md)
 
 
 
