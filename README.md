@@ -123,6 +123,11 @@ Cross-cutting concept references for LLM application development — clear, dist
 The complete engineering guide to shipping production-grade AI agents — architecture, models, prompting, tools, retrieval, memory, orchestration, gateways, observability, evals, reliability, security, cost, trust (CAIR), MLOps, and governance.
 * [35. Production-Grade AI Agents — The Complete Engineering Guide](./24-production-grade-ai-systems/35_Production_Grade_AI_Systems.md)
 
+### Section 25: Semantic Caching for AI Agents ⚡
+*Folder: [`/25-semantic-caching-for-ai-agents`](./25-semantic-caching-for-ai-agents)*
+How to reduce cost and latency in agent systems by reusing answers across semantically equivalent requests, with production-safe quality controls.
+* [36. Semantic Caching for AI Agents](./25-semantic-caching-for-ai-agents/36_Semantic_Caching_For_AI_Agents.md)
+
 
 
 ## 📖 Reference Guides
