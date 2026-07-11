@@ -92,14 +92,16 @@ XX-section-name/
 1. **Don't split large docs** — keep theory in one file with a TOC.
 2. **Runnable examples over doc-embedded code** — put working code in `src/*.py`, reference from docs with relative links.
 3. **Commit messages** — descriptive, single-line: `Add TOC, gap coverage, streaming & indexing examples for RAG section`.
-4. **Don't auto-push** — commit locally, user decides when to push.
+4. **Commit and push immediately** — after committing a markdown/documentation change, push it right away unless the user explicitly says not to.
 5. **Don't commit `.env` or company PDFs** — these are in `.gitignore`.
 6. **Update `README.md`** when adding new sections — add the section header and file links.
 7. **Update implementation doc** project structure tree when adding new scripts.
 8. **Identify and call out bugs and improvements** explicitly when reviewing code, rather than silently fixing them.
 9. **Validate transcript content** — never copy transcript text blindly into notes. Transcripts are speech-to-text and contain errors (e.g., "Cloud Anthropic" → Claude by Anthropic, "1k tokens" → 100K tokens, "0.59%" → 53%). Verify claims (math, tool recommendations, links) against current reality before documenting. Call out corrections with `> ⚠️ **Transcript correction:**` blocks.
 10. **Fill in missing information** — if Eden mentions a concept briefly, expand it with accurate details (correct math, current tool status, proper links). The goal is production-grade interview-prep notes, not a transcript mirror.
-11. **Create a new section (13-langgraph-fundamentals/)** when starting the LangGraph course. Validate transcript, fill in missing concepts (CheckpointSaver, thread_id, RunnableConfig, StateGraph, interrupts, reducers, subgraphs, middleware), add C# analogies, and produce interview-ready notes.
+11. **Markdown review pass** — when generating or updating a markdown document, end with a strict production-grade critique, reverify the document, then commit and push the changes.
+12. **C# analogies** — only include them when they are directly related to data structures or core programming concepts. If the analogy is not clearly relevant, omit the C# section entirely.
+13. **Create a new section (13-langgraph-fundamentals/)** when starting the LangGraph course. Validate transcript, fill in missing concepts (CheckpointSaver, thread_id, RunnableConfig, StateGraph, interrupts, reducers, subgraphs, middleware), and produce interview-ready notes.
 
 ---
 
