@@ -112,7 +112,7 @@ XX-section-name/
 - Don't add type annotations or docstrings to code you didn't write.
 - Don't rename existing files without asking.
 - Don't assume open-source repo files match — always read the workspace files.
-- Don't push to remote without explicit permission.
+- Don't push to remote unless the user explicitly says not to.
 
 ---
 
@@ -169,3 +169,4 @@ XX-section-name/
 | 22. Deep Agent Skills | `22-deep-agent-skills/` | ✅ Complete |
 | 23. LangChain Glossary | `23-langchain-glossary/` | ✅ Complete |
 | 24. Production-Grade AI Systems | `24-production-grade-ai-systems/` | ✅ Complete |
+| 25. Semantic Caching for AI Agents | `25-semantic-caching-for-ai-agents/` | ✅ Complete |
