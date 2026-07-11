@@ -97,11 +97,11 @@ XX-section-name/
 6. **Update `README.md`** when adding new sections — add the section header and file links.
 7. **Update implementation doc** project structure tree when adding new scripts.
 8. **Identify and call out bugs and improvements** explicitly when reviewing code, rather than silently fixing them.
-9. **Validate transcript content** — never copy transcript text blindly into notes. Transcripts are speech-to-text and contain errors (e.g., "Cloud Anthropic" → Claude by Anthropic, "1k tokens" → 100K tokens, "0.59%" → 53%). Verify claims (math, tool recommendations, links) against current reality before documenting. Call out corrections with `> ⚠️ **Transcript correction:**` blocks.
-10. **Fill in missing information** — if Eden mentions a concept briefly, expand it with accurate details (correct math, current tool status, proper links). The goal is production-grade interview-prep notes, not a transcript mirror.
+9. **Validate transcript content** — if `placeholder.txt` contains a transcript or rough notes, never copy it blindly into the final markdown. Treat it as speech-to-text input that may contain errors (e.g., "Cloud Anthropic" → Claude by Anthropic, "1k tokens" → 100K tokens, "0.59%" → 53%). Verify claims (math, tool recommendations, links) against current reality before documenting. Call out corrections with `> ⚠️ **Transcript correction:**` blocks.
+10. **Fill in missing information** — if a transcript mentions a concept only briefly, expand it with accurate details (correct math, current tool status, proper links). The goal is production-grade interview-prep notes, not a transcript mirror.
 11. **Markdown review pass** — when generating or updating a markdown document, end with a strict production-grade critique, reverify the document, then commit and push the changes.
 12. **C# analogies** — only include them when they are directly related to data structures or core programming concepts. If the analogy is not clearly relevant, omit the C# section entirely.
-13. **Create a new section (13-langgraph-fundamentals/)** when starting the LangGraph course. Validate transcript, fill in missing concepts (CheckpointSaver, thread_id, RunnableConfig, StateGraph, interrupts, reducers, subgraphs, middleware), and produce interview-ready notes.
+13. **Create a new section (13-langgraph-fundamentals/)** when starting the LangGraph course. Validate the transcript, fill in missing concepts (CheckpointSaver, thread_id, RunnableConfig, StateGraph, interrupts, reducers, subgraphs, middleware), and produce interview-ready notes.
 
 ---
 
