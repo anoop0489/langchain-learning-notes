@@ -101,7 +101,7 @@ XX-section-name/
 10. **Fill in missing information** — if a transcript mentions a concept only briefly, expand it with accurate details (correct math, current tool status, proper links). The goal is production-grade interview-prep notes, not a transcript mirror.
 11. **Markdown review pass** — when generating or updating a markdown document, end with a strict production-grade critique, reverify the document, then commit and push the changes.
 12. **C# analogies** — only include them when they are directly related to data structures or core programming concepts. If the analogy is not clearly relevant, omit the C# section entirely.
-13. **Create a new section (13-langgraph-fundamentals/)** when starting the LangGraph course. Validate the transcript, fill in missing concepts (CheckpointSaver, thread_id, RunnableConfig, StateGraph, interrupts, reducers, subgraphs, middleware), and produce interview-ready notes.
+13. **When starting a new section**, validate the transcript, fill in missing concepts, and produce interview-ready notes.
 
 ---
 
