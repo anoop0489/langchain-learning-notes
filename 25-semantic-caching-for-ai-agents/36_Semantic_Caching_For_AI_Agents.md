@@ -22,9 +22,8 @@
 | 10 | [Deep Dive: Freshness, Invalidation, and Multi-Tenancy](#10-deep-dive-freshness-invalidation-and-multi-tenancy) | How to stop stale or cross-tenant answers from leaking |
 | 11 | [Deep Dive: Observability and Operations](#11-deep-dive-observability-and-operations) | How to monitor, test, and run semantic cache in production |
 | 12 | [Deep Dive: Risks, Failure Modes, and Anti-Patterns](#12-deep-dive-risks-failure-modes-and-anti-patterns) | The most common ways teams misuse semantic caching |
-| 13 | [C# / .NET Analogies](#13-c--net-analogies) | Mappings to familiar software engineering patterns |
-| 14 | [Interview Q&A Anchors](#interview-qa-anchors) | Concise, production-grade interview answers |
-| 15 | [References](#references) | Official docs and further reading |
+| 13 | [Interview Q&A Anchors](#interview-qa-anchors) | Concise, production-grade interview answers |
+| 14 | [References](#references) | Official docs and further reading |
 
 ---
 
@@ -642,31 +641,6 @@ Embedding generation, vector search, re-ranking, and verification all have costs
 - rapidly changing live-data answers
 - safety-critical decision making without strong review layers
 - low-repeat exploratory tasks
-
----
-
-## 13. C# / .NET Analogies
-
-Semantic caching becomes easier to reason about if you map it to familiar software patterns.
-
-| Semantic Cache Concern | Pattern | C# / .NET Analogy |
-|------------------------|---------|-------------------|
-| Swappable similarity logic | Strategy Pattern | `ISimilarityScorer` with cosine / dot-product implementations |
-| Multi-stage hit decision | Pipeline / Middleware | ASP.NET Core middleware chain that filters and validates requests |
-| Tenant and policy boundaries | Scoped cache keying | Prefixing keys by tenant, locale, and version in `IMemoryCache` or Redis |
-| Staleness management | Versioned cache namespace | `refundPolicy:v3:*` invalidation pattern |
-| Verification on risky paths | Policy-based authorization | Similar to adding an approval gate before executing a privileged action |
-
-### Practical .NET mental model
-
-Think of semantic cache as a specialized read-optimization service:
-
-1. retrieve likely prior answer candidates
-2. apply business-policy filters
-3. validate acceptance
-4. either short-circuit the request or continue to the expensive handler
-
-That is much closer to a policy-aware lookup pipeline than a simple dictionary cache.
 
 ---
 
