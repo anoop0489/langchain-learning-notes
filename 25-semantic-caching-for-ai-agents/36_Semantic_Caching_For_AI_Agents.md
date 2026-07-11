@@ -670,6 +670,114 @@ That is much closer to a policy-aware lookup pipeline than a simple dictionary c
 
 ---
 
+## Beginner Story: How Semantic Search Helps
+
+Imagine you work on a customer support platform for a subscription business. Different customer accounts use the same app, but each account can have its own support rules and current refund policy. A customer asks, "How do I get a refund?" The agent answers it, and the system stores the question, the answer, and an embedding in Redis along with the customer account it belongs to.
+
+Five minutes later, another customer from the same account asks, "I want my money back. What do I do?" A normal exact-match cache would miss, because the wording is different. Semantic search, however, compares the meaning of the new question with the stored questions and finds that they are close enough.
+
+Before it returns anything, the system checks the production rules:
+
+1. Is this the same customer account?
+2. Is the saved answer still current?
+3. Is the similarity score above the acceptance threshold?
+4. Is this question safe enough to reuse?
+
+If those checks pass, Redis gives back the old answer immediately. If they do not pass, the request falls back to the normal LLM or RAG path, and the new answer is stored as another cache entry.
+
+That is the real value of semantic search in production. It is not just "find a similar sentence." It is "find a similar sentence, verify that it is safe to reuse, and only then skip the expensive work."
+
+### A practical Redis example
+
+Here is the basic production flow using Redis:
+
+1. Convert the question into an embedding.
+2. Search the Redis vector index for the closest cached questions.
+3. Filter by customer account and answer version.
+4. Accept the hit only if the score clears the threshold.
+5. Return the cached answer if it is safe.
+6. Otherwise, call the LLM or RAG pipeline and save the new result back to Redis with TTL.
+
+In simple Python-style pseudocode:
+
+```python
+query_embedding = embed(question)
+
+candidate = redis.search_vectors(
+    index="faq_cache",
+    vector=query_embedding,
+    top_k=1,
+    filters={
+        "account_id": account_id,
+        "answer_version": answer_version,
+    }
+)
+
+if candidate and candidate.score >= 0.85 and not candidate.is_stale:
+    return candidate.answer
+
+answer = llm.answer(question)
+redis.save(
+    index="faq_cache",
+    question=question,
+    embedding=query_embedding,
+    answer=answer,
+    account_id=account_id,
+    answer_version=answer_version,
+    ttl_seconds=86400,
+)
+return answer
+```
+
+### The key idea
+
+Redis is not "guessing" the answer. It is storing past examples and helping you find the closest safe match quickly. The LLM still does the hard work when the question is new, risky, or out of date. Semantic search just helps you avoid repeating expensive work when the meaning is already known and the answer is still safe to reuse.
+
+### How to read this example
+
+If you are learning this for the first time, read the example in this order:
+
+1. **Core idea** - a new question is turned into an embedding, Redis searches for the closest past question, and the answer is reused only when the match is good enough.
+2. **Optional production techniques** - these are extra safety or accuracy tools you can add later.
+3. **Best default strategy** - start simple, measure quality, and only add more complexity if the cache is making mistakes.
+
+#### 1. Core idea
+
+The heart of semantic caching is very simple: find a past question that means the same thing and reuse its answer if it is safe.
+
+That core flow uses:
+
+- **Embedding** - converts the question into numbers so meaning can be compared.
+- **Vector search** - finds the closest past question in Redis.
+- **Similarity threshold** - decides whether the match is close enough to trust.
+- **Fallback path** - sends the request to the LLM or RAG flow when the match is not good enough.
+- **Cache write-back** - stores the new answer so the cache improves over time.
+
+#### 2. Optional production techniques
+
+These are useful, but they are not the main idea of semantic caching.
+
+- **BM25** - a keyword-based search method that is useful when exact words matter, such as product names, error codes, or technical terms. It can complement semantic search, but it is not the core idea of this section.
+- **Fuzzy matching** - catches small spelling mistakes or typo-level differences before semantic search. Example: "refnd" should still find "refund." Use this when users type quickly and make small mistakes.
+- **Re-ranking** - takes the top few Redis matches and asks a stronger model to choose the best one. Example: if three answers look similar, re-ranking helps pick the one that actually fits the question best.
+- **LLM judge** - asks a smaller LLM, "Is this cached answer safe to reuse for this new question?" Example: use it when the cache is uncertain and you want one last check before returning an answer.
+
+#### 3. Best default strategy
+
+For a beginner, the best production pattern is usually:
+
+1. Try exact match first if you already have it.
+2. Use semantic search in Redis with a clear threshold.
+3. Keep the cache scoped to the right account or business context.
+4. Add TTL so old answers expire.
+5. Fall back to the LLM or RAG flow when the cache is not clearly safe.
+
+Only after that should you consider fuzzy matching, re-ranking, or an LLM judge. Those are optimization layers, not the foundation.
+
+So the point is not to explain random pieces in isolation. The point is to show one clean production flow first, then explain which extra techniques can improve it if you need them.
+
+---
+
 ## Interview Q&A Anchors
 
 **Q: What is semantic caching in the context of AI agents?**
