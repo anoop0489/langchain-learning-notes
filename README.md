@@ -127,6 +127,7 @@ The complete engineering guide to shipping production-grade AI agents — archit
 *Folder: [`/25-semantic-caching-for-ai-agents`](./25-semantic-caching-for-ai-agents)*
 How to reduce cost and latency in agent systems by reusing answers across semantically equivalent requests, with production-safe quality controls.
 * [36. Semantic Caching for AI Agents](./25-semantic-caching-for-ai-agents/36_Semantic_Caching_For_AI_Agents.md)
+* [37. Semantic Caching Implementation (Spec → Build → Tune → Evaluate)](./25-semantic-caching-for-ai-agents/37_Semantic_Caching_Implementation.md)
 
 
 
