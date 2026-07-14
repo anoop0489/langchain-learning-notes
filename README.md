@@ -129,7 +129,11 @@ How to reduce cost and latency in agent systems by reusing answers across semant
 * [36. Semantic Caching for AI Agents](./25-semantic-caching-for-ai-agents/36_Semantic_Caching_For_AI_Agents.md)
 * [37. Semantic Caching Implementation (Spec → Build → Tune → Evaluate)](./25-semantic-caching-for-ai-agents/37_Semantic_Caching_Implementation.md)
 
-
+### Section 26: Evaluating AI Agents 📊
+*Folder: [`/26-evaluating-ai-agents`](./26-evaluating-ai-agents)*
+Deterministic and reference-free evaluation architecture — offline CI/CD testing with golden datasets, online production monitoring, hallucination detection, and tool calling validation.
+* [37. Evaluating AI Agents (Offline vs Online, LLM-as-Judge, Self-Consistency, Tool Validation)](./26-evaluating-ai-agents/37_Evaluating_AI_Agents.md)
+* [38. Evaluating AI Agents Implementation (LangSmith, Custom Evaluators, Hallucination Detection, Tool Validation)](./26-evaluating-ai-agents/38_Evaluating_AI_Agents_Implementation.md)
 
 ## 📖 Reference Guides
 

@@ -2,7 +2,7 @@
 
 ## What This Repo Is
 
-A personal study/interview-prep repository for mastering LangChain, LangGraph, and Agentic AI. The user is a **Senior .NET/C# engineer** learning Python/LangChain for AI engineering roles. All docs and code serve as revision material.
+A personal study/interview-prep repository for mastering LangChain, LangGraph, and Agentic AI. The user is a **Senior .NET/C# engineer** learning Python/LangChain for AI engineering roles. All docs and code serve as revision material. This is a one shop for learning and revising all key concepts, implementations, and interview preparation materials related to LangChain and Agentic AI.
 
 ---
 
@@ -97,7 +97,7 @@ XX-section-name/
 6. **Update `README.md`** when adding new sections — add the section header and file links.
 7. **Update implementation doc** project structure tree when adding new scripts.
 8. **Identify and call out bugs and improvements** explicitly when reviewing code, rather than silently fixing them.
-9. **Validate transcript content** — if `placeholder.txt` contains a transcript or rough notes, never copy it blindly into the final markdown. Treat it as speech-to-text input that may contain errors (e.g., "Cloud Anthropic" → Claude by Anthropic, "1k tokens" → 100K tokens, "0.59%" → 53%). Verify claims (math, tool recommendations, links) against current reality before documenting. Call out corrections with `> ⚠️ **Transcript correction:**` blocks.
+9. **Validate transcript content** — if `placeholder.txt` or `placeholder.md` contains a transcript or rough notes, never copy it blindly into the final markdown. Treat it as speech-to-text input that may contain errors (e.g., "Cloud Anthropic" → Claude by Anthropic, "1k tokens" → 100K tokens, "0.59%" → 53%). Verify claims (math, tool recommendations, links) against current reality before documenting. Call out corrections with `> ⚠️ **Transcript correction:**` blocks.
 10. **Fill in missing information** — if a transcript mentions a concept only briefly, expand it with accurate details (correct math, current tool status, proper links). The goal is production-grade interview-prep notes, not a transcript mirror.
 11. **Markdown review pass** — when generating or updating a markdown document, end with a strict production-grade critique, reverify the document, then commit and push the changes.
 12. **C# analogies** — only include them when they are directly related to data structures or core programming concepts. If the analogy is not clearly relevant, omit the C# section entirely.
