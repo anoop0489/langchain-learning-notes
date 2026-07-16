@@ -135,6 +135,12 @@ Deterministic and reference-free evaluation architecture — offline CI/CD testi
 * [37. Evaluating AI Agents (Offline vs Online, LLM-as-Judge, Self-Consistency, Tool Validation)](./26-evaluating-ai-agents/37_Evaluating_AI_Agents.md)
 * [38. Evaluating AI Agents Implementation (LangSmith, Custom Evaluators, Hallucination Detection, Tool Validation)](./26-evaluating-ai-agents/38_Evaluating_AI_Agents_Implementation.md)
 
+### Section 27: Guardrails 🛡️
+*Folder: [`/27-guardrails`](./27-guardrails)*
+Production-grade safety architecture for AI agents — inbound/outbound defenses, PII controls, tool policy enforcement, middleware lifecycle, and operational rollout patterns.
+* [39. Guardrails Theory and Concepts (Architecture, Middleware Hooks, PII and Tool Guardrails, Ops)](./27-guardrails/39_Guardrails_Theory_And_Concepts.md)
+* [40. Guardrails Implementation (Layered Middleware, Input and Tool Test Harnesses)](./27-guardrails/40_Guardrails_Implementation.md)
+
 ## 📖 Reference Guides
 
 | Guide | Description | 
