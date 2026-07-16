@@ -170,6 +170,27 @@ Example decision policy:
 2. 0.60 <= entailment < 0.85: escalate for review
 3. entailment < 0.60: allow unless another guardrail triggers
 
+### Step 7: Add classifier cascade for scale and reliability
+
+Use a tiered classifier architecture to balance cost, latency, and safety:
+
+1. Tier A: fast broad screen on all traffic.
+2. Tier B: stronger classifier only for uncertain/high-risk cases.
+3. Tier C: HITL for high-impact ambiguous outcomes.
+
+Implementation guidance:
+
+1. Define confidence bands per policy label.
+2. Map each band to an action (`allow`, `rewrite`, `review`, `block`).
+3. Persist classifier model version and thresholds in trace metadata.
+4. Recalibrate thresholds with offline datasets on a fixed cadence.
+
+Example action mapping:
+
+1. score >= 0.90: block
+2. 0.70 <= score < 0.90: review
+3. score < 0.70: allow with monitoring (low-risk flows)
+
 ---
 
 ## Implementation: Core Secure Agent
@@ -246,6 +267,7 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 5. Build a correction loop that auto-generates test cases from blocked production traces.
 6. Separate requirements into three policy files: `input_policies`, `output_policies`, and `shared_policies` to avoid accidental over/under enforcement.
 7. Maintain a hypothesis registry for NLI guardrails and version it alongside policy releases.
+8. Add a classifier registry with: model_id, label_set, thresholds, calibration_date, and owner.
 
 ---
 
@@ -258,3 +280,5 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 5. Rollout stages: shadow, soft, enforce.
 6. Incident playbook and rollback path documented.
 7. Every requirement is tagged with scope: `input-only`, `output-only`, or `both`.
+8. Classifier cascade is implemented with explicit confidence-band actions.
+9. Classifier thresholds are calibrated and versioned.
