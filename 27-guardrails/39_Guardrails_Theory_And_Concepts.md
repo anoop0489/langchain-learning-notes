@@ -9,11 +9,13 @@
 | 3 | [Deep Dive: Guardrail Types](#deep-dive-guardrail-types) | Deterministic, model-based, and human-in-the-loop controls |
 | 4 | [Deep Dive: Middleware Lifecycle](#deep-dive-middleware-lifecycle) | Where to enforce checks in the agent loop |
 | 5 | [Deep Dive: Scope by Requirement (Input vs Output vs Both)](#deep-dive-scope-by-requirement-input-vs-output-vs-both) | How to choose enforcement scope per requirement |
-| 6 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
-| 7 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
-| 8 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
-| 9 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
-| 10 | [References](#references) | Official docs and standards |
+| 6 | [Deep Dive: NLI for Guardrails](#deep-dive-nli-for-guardrails) | How entailment/contradiction decisions enforce policy |
+| 7 | [Deep Dive: NLI vs Semantic Similarity](#deep-dive-nli-vs-semantic-similarity) | When to use each and how to combine them safely |
+| 8 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
+| 9 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
+| 10 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
+| 11 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
+| 12 | [References](#references) | Official docs and standards |
 
 ---
 
@@ -27,6 +29,8 @@
 | Tool Guardrail | Tool execution policy | Controls whether a tool can be called and with which arguments. |
 | Deterministic Guardrail | Rule-based check | Uses regex, schema, allowlists, and static logic for predictable enforcement. |
 | Model-Based Guardrail | LLM classifier/gate | Uses a second model to classify safety/quality risk when rules are insufficient. |
+| Natural Language Inference (NLI) | Entailment logic check | Determines whether a premise entails, contradicts, or is neutral to a policy hypothesis. |
+| Semantic Similarity | Meaning closeness score | Measures how semantically close two texts are, typically via embedding cosine similarity. |
 | Human-in-the-Loop (HITL) | Manual approval checkpoint | Requires user or reviewer approval before sensitive tool actions. |
 | Fail-Closed | Block on uncertainty | Default deny behavior when guardrail confidence or validations fail. |
 | Fail-Open | Allow on uncertainty | Default allow behavior for low-risk paths where availability is prioritized. |
@@ -191,6 +195,79 @@ Design rule: for high-risk requirements, default to both.
 
 ---
 
+## Deep Dive: NLI for Guardrails
+
+NLI (Natural Language Inference) evaluates a directional claim:
+
+1. Premise: the text you observed (user input or model output).
+2. Hypothesis: a policy statement you want to test.
+3. Label: entailment, contradiction, or neutral.
+
+### Why NLI is useful in guardrails
+
+1. It supports policy reasoning beyond keyword matching.
+2. It is directional, so you can test specific policy claims.
+3. It is auditable: every block can be tied to a hypothesis.
+
+### NLI guardrail pattern
+
+1. Deterministic checks first (regex/schema/allowlists).
+2. Run NLI only on borderline or high-impact cases.
+3. Use thresholds for each policy hypothesis.
+4. Block, rewrite, escalate, or allow based on score and label.
+
+Example hypotheses:
+
+1. "This response includes medical diagnosis advice."
+2. "This response requests credential disclosure."
+3. "This output contains self-harm encouragement."
+
+---
+
+## Deep Dive: NLI vs Semantic Similarity
+
+Both are semantic techniques, but they answer different questions.
+
+### Comparison Table
+
+| Aspect | NLI | Semantic Similarity |
+|---|---|---|
+| Core Question | Does premise support/contradict hypothesis? | How close in meaning are two texts? |
+| Output Type | entailment / contradiction / neutral + confidence | scalar similarity score |
+| Directional | Yes | Usually no (symmetric) |
+| Best For | Policy enforcement, claim verification | Retrieval, dedupe, caching, reranking |
+| Failure Mode | Model calibration and threshold sensitivity | High score for opposite claims with shared vocabulary |
+| Guardrail Role | Primary for nuanced policy decisions | Secondary signal for ambiguity triage |
+
+### Why they are not interchangeable
+
+Two sentences can be semantically close yet policy-opposite.
+
+Example:
+
+1. "You should take this medication daily."
+2. "You should not take this medication daily."
+
+Similarity may remain high because vocabulary overlaps. NLI can classify contradiction, which is what guardrails need.
+
+### Production decision flow
+
+1. If deterministic rule matches hard-block, block immediately.
+2. Else run NLI against policy hypotheses.
+3. If entailment score >= block threshold, block or safe-rewrite.
+4. If contradiction score >= contradiction threshold, allow or reduce risk score.
+5. If neutral/low confidence, escalate to HITL for critical domains.
+
+### Threshold guidance (starting points)
+
+1. High-risk policy block: entailment >= 0.85
+2. Medium-risk review: entailment between 0.60 and 0.85
+3. Neutral/low confidence: < 0.60 and route by risk class
+
+Tune thresholds with offline evals before production rollout.
+
+---
+
 ## Deep Dive: PII Protection Patterns
 
 PII strategy depends on risk and use case.
@@ -272,6 +349,12 @@ Guardrails are not done after coding. They require ongoing operations.
 **Q: When should I use deterministic checks vs model-based checks?**
 > **A:** Use deterministic checks for high-confidence, low-cost rules like regex PII detection, schema checks, and allowlists. Use model-based checks for nuanced semantic policies where rules are brittle. Keep model checks targeted because they add latency and cost.
 
+**Q: What is NLI and why use it in guardrails?**
+> **A:** NLI tests whether observed text entails, contradicts, or is neutral to a policy hypothesis. It is useful for policy enforcement where keyword filters are too brittle, because it reasons over meaning directionally. In production, use it after deterministic checks and with calibrated thresholds.
+
+**Q: Is NLI the same as semantic similarity?**
+> **A:** No. Similarity measures closeness of meaning, while NLI evaluates logical relation between a premise and a claim. Similarity is excellent for retrieval and caching; NLI is stronger for enforcement decisions like allow/block/escalate.
+
 **Q: How do you guard tool calls in production agents?**
 > **A:** Apply tool allowlists by role, validate argument schema and bounds, and gate side-effecting tools behind HITL approvals. For critical actions, fail closed by default and require explicit policy evidence.
 
@@ -289,5 +372,6 @@ Guardrails are not done after coding. They require ongoing operations.
 - LangChain Python built-in middleware: https://docs.langchain.com/oss/python/langchain/middleware/built-in
 - LangChain middleware overview: https://docs.langchain.com/oss/python/langchain/middleware
 - LangSmith tracing guide: https://docs.langchain.com/langsmith/trace-with-langchain
+- Hugging Face NLI task reference: https://huggingface.co/tasks/text-classification
 - OWASP Top 10 for LLM Applications: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 - NIST AI Risk Management Framework: https://www.nist.gov/itl/ai-risk-management-framework

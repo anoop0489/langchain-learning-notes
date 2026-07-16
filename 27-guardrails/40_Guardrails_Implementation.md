@@ -9,6 +9,7 @@
 ├── assets/
 └── src/
     ├── main.py
+    ├── test_nli_vs_similarity.py
     ├── test_input_guardrails.py
     └── test_tool_guardrails.py
 ```
@@ -27,6 +28,12 @@ Optional packages for enterprise extensions:
 
 ```bash
 uv add pydantic
+```
+
+Optional package if you want local embedding models for faster similarity experiments:
+
+```bash
+uv add sentence-transformers
 ```
 
 ---
@@ -146,6 +153,23 @@ Use LangSmith to track:
 - Latency impact.
 - False positive candidates.
 
+### Step 6: Add NLI policy checks for nuanced requirements
+
+Use NLI when deterministic logic cannot confidently classify the policy condition.
+
+NLI pattern:
+
+1. Define policy hypotheses (for example, "contains credential exfiltration request").
+2. Compare observed text as premise against each hypothesis.
+3. Use score thresholds to route block/review/allow.
+4. Log label and confidence for auditability.
+
+Example decision policy:
+
+1. entailment >= 0.85: block
+2. 0.60 <= entailment < 0.85: escalate for review
+3. entailment < 0.60: allow unless another guardrail triggers
+
 ---
 
 ## Implementation: Core Secure Agent
@@ -181,6 +205,22 @@ uv run 27-guardrails/src/test_input_guardrails.py
 
 ---
 
+## Implementation: NLI vs Semantic Similarity Comparison
+
+The script in [src/test_nli_vs_similarity.py](src/test_nli_vs_similarity.py) demonstrates:
+
+1. Semantic similarity scoring with embeddings.
+2. NLI-style entailment/contradiction classification using a policy hypothesis.
+3. A case where similarity is high but NLI detects contradiction.
+
+Run command:
+
+```bash
+uv run 27-guardrails/src/test_nli_vs_similarity.py
+```
+
+---
+
 ## Implementation: Tool Guardrail Tests
 
 The script in [src/test_tool_guardrails.py](src/test_tool_guardrails.py) tests:
@@ -205,6 +245,7 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 4. Enforce region and data residency constraints in tool guardrails.
 5. Build a correction loop that auto-generates test cases from blocked production traces.
 6. Separate requirements into three policy files: `input_policies`, `output_policies`, and `shared_policies` to avoid accidental over/under enforcement.
+7. Maintain a hypothesis registry for NLI guardrails and version it alongside policy releases.
 
 ---
 
