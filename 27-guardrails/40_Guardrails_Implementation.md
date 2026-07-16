@@ -77,6 +77,58 @@ Use `PIIMiddleware` on input and output depending on policy:
 - `mask` where user readability is useful.
 - `block` for highly sensitive domains.
 
+### Step 3A: Choose Scope Profile (Input-only vs Output-only vs Both)
+
+Use one of these profiles per requirement:
+
+#### Profile A: Input-only
+
+Use when risk is mostly inbound (injection, off-domain requests, secret ingress).
+
+```python
+middleware=[
+    InputPolicyMiddleware(),
+    PIIMiddleware("email", strategy="redact", apply_to_input=True),
+    PIIMiddleware("credit_card", strategy="block", apply_to_input=True),
+    ToolPolicyMiddleware(),
+]
+```
+
+#### Profile B: Output-only
+
+Use when risk is primarily final response quality/safety/disclosure.
+
+Note: `OutputSafetyMiddleware()` in the snippets below is a custom middleware you define for your project (for example, semantic safety checks in `after_agent`).
+
+```python
+middleware=[
+    PIIMiddleware("email", strategy="redact", apply_to_output=True),
+    PIIMiddleware("url", strategy="block", apply_to_output=True),
+    OutputSafetyMiddleware(),
+]
+```
+
+#### Profile C: Both input and output
+
+Use for regulated or high-risk systems.
+
+```python
+middleware=[
+    InputPolicyMiddleware(),
+    PIIMiddleware("email", strategy="redact", apply_to_input=True),
+    PIIMiddleware("credit_card", strategy="mask", apply_to_input=True),
+    ToolPolicyMiddleware(),
+    PIIMiddleware("email", strategy="redact", apply_to_output=True),
+    OutputSafetyMiddleware(),
+]
+```
+
+Profile selection guideline:
+
+1. Low risk internal assistant: input-only may be enough.
+2. Public chatbot with legal/compliance exposure: both is recommended.
+3. Content moderation layer over trusted inputs: output-only can be acceptable.
+
 ### Step 4: Enforce tool policies
 
 Before each tool call:
@@ -152,6 +204,7 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 3. Add a safety evaluator chain in `after_agent` for nuanced semantic checks.
 4. Enforce region and data residency constraints in tool guardrails.
 5. Build a correction loop that auto-generates test cases from blocked production traces.
+6. Separate requirements into three policy files: `input_policies`, `output_policies`, and `shared_policies` to avoid accidental over/under enforcement.
 
 ---
 
@@ -163,3 +216,4 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 4. Full observability with tags and policy version metadata.
 5. Rollout stages: shadow, soft, enforce.
 6. Incident playbook and rollback path documented.
+7. Every requirement is tagged with scope: `input-only`, `output-only`, or `both`.

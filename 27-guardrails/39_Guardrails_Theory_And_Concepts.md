@@ -8,11 +8,12 @@
 | 2 | [Guardrails Architecture](#2-guardrails-architecture) | Inbound and outbound enforcement layers |
 | 3 | [Deep Dive: Guardrail Types](#deep-dive-guardrail-types) | Deterministic, model-based, and human-in-the-loop controls |
 | 4 | [Deep Dive: Middleware Lifecycle](#deep-dive-middleware-lifecycle) | Where to enforce checks in the agent loop |
-| 5 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
-| 6 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
-| 7 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
-| 8 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
-| 9 | [References](#references) | Official docs and standards |
+| 5 | [Deep Dive: Scope by Requirement (Input vs Output vs Both)](#deep-dive-scope-by-requirement-input-vs-output-vs-both) | How to choose enforcement scope per requirement |
+| 6 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
+| 7 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
+| 8 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
+| 9 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
+| 10 | [References](#references) | Official docs and standards |
 
 ---
 
@@ -137,6 +138,56 @@ Common hook timing:
 2. before_model: redact/mask PII so providers never receive raw secrets.
 3. wrap_tool_call: deny unauthorized tools/args.
 4. after_agent: run final safety policy check and rewrite/block if unsafe.
+
+---
+
+## Deep Dive: Scope by Requirement (Input vs Output vs Both)
+
+Not every requirement needs both sides. Scope should follow risk.
+
+### Requirement-to-Scope Matrix
+
+| Requirement Type | Input Guardrail | Output Guardrail | Why |
+|---|---|---|---|
+| Prompt injection defense | Required | Optional | Attack enters through user text before planning/tool calls. |
+| Sensitive data ingress (user-provided PII/secrets) | Required | Optional | Prevents sending raw secrets to model/provider logs. |
+| Sensitive data egress (model leaks PII/secrets) | Optional | Required | Stops accidental disclosure in final answer. |
+| Style/tone/brand policy | Optional | Required | Usually concerns generated response quality. |
+| Domain/topic restriction | Required | Optional | Block unsupported intent early to reduce cost/risk. |
+| Tool safety and side-effect control | Required | Optional | Main risk is execution path before tool call. |
+| Regulated environments (finance/healthcare) | Required | Required | Defense-in-depth and auditability on both sides. |
+
+### When to choose Input-only
+
+Use input-only when your main risk is malicious requests, off-domain usage, or raw secret ingestion.
+
+Typical controls:
+
+1. before_agent denylist/allowlist logic.
+2. before_model PII redaction/block.
+3. Tool preconditions and argument schema checks.
+
+### When to choose Output-only
+
+Use output-only when your main risk is content disclosure, unsafe phrasing, or policy non-compliant final responses.
+
+Typical controls:
+
+1. after_model/after_agent final answer checks.
+2. PII masking/redaction on output.
+3. LLM-as-judge safety classifier for nuanced policies.
+
+### When to choose Both
+
+Use both in production systems where you need strict compliance or where either side can independently create harm.
+
+Typical controls:
+
+1. Input: injection defense + ingress PII controls.
+2. Tool path: allowlist + fail-closed checks.
+3. Output: egress PII + safety/quality policy gates.
+
+Design rule: for high-risk requirements, default to both.
 
 ---
 
