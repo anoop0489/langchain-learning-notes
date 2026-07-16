@@ -191,6 +191,27 @@ Example action mapping:
 2. 0.70 <= score < 0.90: review
 3. score < 0.70: allow with monitoring (low-risk flows)
 
+### Step 8: Add the policy intelligence layer
+
+Use a layered semantic decision stack when simple rules are not enough:
+
+1. NER first to extract sensitive entities such as names, emails, orgs, IDs, and locations.
+2. NLI next to evaluate policy hypotheses like "this text requests credential disclosure".
+3. Semantic similarity for fuzzy matching, retrieval, and grouping similar policy incidents.
+4. Classifier cascade for nuanced moderation labels such as toxicity, abuse, or policy violations.
+5. HITL for the final unresolved high-impact cases.
+
+Implementation guidance:
+
+1. Treat NER as extraction, not enforcement.
+2. Treat NLI as policy reasoning.
+3. Treat similarity as a supporting signal, not a final block condition.
+4. Treat classifiers as one stage in a cascade with calibrated thresholds.
+
+Recommended workflow:
+
+1. entity_detect -> 2. rule_check -> 3. nli_check -> 4. classifier_check -> 5. route_action
+
 ---
 
 ## Implementation: Core Secure Agent
@@ -268,6 +289,7 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 6. Separate requirements into three policy files: `input_policies`, `output_policies`, and `shared_policies` to avoid accidental over/under enforcement.
 7. Maintain a hypothesis registry for NLI guardrails and version it alongside policy releases.
 8. Add a classifier registry with: model_id, label_set, thresholds, calibration_date, and owner.
+9. Add a policy-intelligence registry with: entity types, NLI hypotheses, similarity use cases, and classifier labels.
 
 ---
 
@@ -282,3 +304,4 @@ uv run 27-guardrails/src/test_tool_guardrails.py
 7. Every requirement is tagged with scope: `input-only`, `output-only`, or `both`.
 8. Classifier cascade is implemented with explicit confidence-band actions.
 9. Classifier thresholds are calibrated and versioned.
+10. Policy-intelligence layer is explicitly assigned to extraction, reasoning, similarity, and moderation roles.

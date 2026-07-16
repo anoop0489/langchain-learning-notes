@@ -12,11 +12,12 @@
 | 6 | [Deep Dive: NLI for Guardrails](#deep-dive-nli-for-guardrails) | How entailment/contradiction decisions enforce policy |
 | 7 | [Deep Dive: NLI vs Semantic Similarity](#deep-dive-nli-vs-semantic-similarity) | When to use each and how to combine them safely |
 | 8 | [Deep Dive: Classifier Strategy Layer](#deep-dive-classifier-strategy-layer) | Where SOTA classifiers fit and how to operate them safely |
-| 9 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
-| 10 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
-| 11 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
-| 12 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
-| 13 | [References](#references) | Official docs and standards |
+| 9 | [Deep Dive: Policy Intelligence Layer](#deep-dive-policy-intelligence-layer) | How NER, NLI, similarity, and classifiers work together |
+| 10 | [Deep Dive: PII Protection Patterns](#deep-dive-pii-protection-patterns) | Redact, mask, hash, and block strategies |
+| 11 | [Deep Dive: Tool Guardrails](#deep-dive-tool-guardrails) | Tool allowlists, parameter checks, and policy gates |
+| 12 | [Deep Dive: Guardrails Operations](#deep-dive-guardrails-operations) | Metrics, incident response, and rollout strategy |
+| 13 | [Interview Q&A Anchors](#interview-qa-anchors) | Production-grade answer patterns |
+| 14 | [References](#references) | Official docs and standards |
 
 ---
 
@@ -32,6 +33,7 @@
 | Model-Based Guardrail | LLM classifier/gate | Uses a second model to classify safety/quality risk when rules are insufficient. |
 | Natural Language Inference (NLI) | Entailment logic check | Determines whether a premise entails, contradicts, or is neutral to a policy hypothesis. |
 | Semantic Similarity | Meaning closeness score | Measures how semantically close two texts are, typically via embedding cosine similarity. |
+| Named Entity Recognition (NER) | Entity extraction | Finds structured entities such as people, organizations, locations, emails, IDs, and dates in text. |
 | Classifier Cascade | Multi-stage moderation stack | Routes traffic through cheap-to-expensive classifiers based on uncertainty and risk. |
 | Calibration | Confidence reliability alignment | Process of mapping model confidence to true empirical risk using validation data. |
 | Human-in-the-Loop (HITL) | Manual approval checkpoint | Requires user or reviewer approval before sensitive tool actions. |
@@ -324,6 +326,67 @@ SOTA classifiers are important, but they are a layer, not the whole guardrail sy
 3. Drift by language, channel, and user segment.
 4. Adversarial robustness tests.
 5. Threshold re-tuning cadence tied to policy updates.
+
+---
+
+## Deep Dive: Policy Intelligence Layer
+
+The policy intelligence layer is the semantic decision stack that sits between raw text and final enforcement.
+
+### Recommended order
+
+1. Deterministic rules: formats, allowlists, hard blocks.
+2. NER: extract entities that matter for policy and PII.
+3. NLI: test whether text entails a banned policy claim.
+4. Semantic similarity: handle retrieval, fuzzy matching, and ambiguity grouping.
+5. Classifier cascade: moderate nuanced or high-risk content.
+6. HITL: resolve high-impact ambiguity or irreversible actions.
+
+### What each technique is best at
+
+| Technique | What it detects | Best use | Not best for |
+|---|---|---|---|
+| NER | Structured entities like names, emails, orgs, locations, IDs | PII, audit trails, entity-aware routing | Policy reasoning |
+| NLI | Entailment/contradiction of a policy hypothesis | Block/review/allow decisions | Entity extraction |
+| Semantic similarity | Meaning closeness between texts | Retrieval, dedupe, fuzzy matching | Direct policy enforcement |
+| SOTA classifier | Safety/moderation label probabilities | Toxicity, abuse, policy moderation | Exact entity extraction |
+
+### NER in guardrails
+
+Use NER when you need to identify the sensitive objects in a message before applying policy.
+
+Examples:
+
+1. Detect emails and phone numbers for PII redaction.
+2. Detect company and region names for data residency policy.
+3. Detect account IDs and order IDs for authorization checks.
+
+### Why NER is not enough by itself
+
+1. It finds entities but does not understand policy intent.
+2. It can miss implicit requests with no obvious entity.
+3. It cannot decide whether a claim is allowed or disallowed.
+
+### Combined production flow
+
+1. NER extracts entities from input/output.
+2. Deterministic rules evaluate exact policy constraints.
+3. NLI tests semantic policy claims.
+4. Classifier scores moderation risk.
+5. HITL handles uncertain high-impact cases.
+
+### Example mapping to actions
+
+| Signal | Example | Action |
+|---|---|---|
+| NER finds SSN/email | Sensitive identifier present | redact or block |
+| NLI entails banned claim | "This response gives medical diagnosis" | block or rewrite |
+| Similarity is high but NLI is contradiction | Paraphrased safe/unsafe pair | treat according to NLI, not similarity alone |
+| Classifier high-confidence unsafe | Toxicity or abuse | block |
+
+### Operational rule
+
+Use NER for extraction, NLI for policy reasoning, similarity for retrieval/fuzzy matching, and classifiers for moderation. Do not use one to replace the others.
 
 ---
 
