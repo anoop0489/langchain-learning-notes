@@ -261,16 +261,6 @@ Guardrails are not done after coding. They require ongoing operations.
 
 ---
 
-## Transcript Corrections
-
-> ⚠️ **Transcript correction:** The transcript uses older/non-portable examples such as specific provider model names and custom package paths that may not be valid in your current environment. For production notes, use LangChain v1 middleware patterns and verify provider model IDs at implementation time.
-
-> ⚠️ **Transcript correction:** Guardrails AI examples in the transcript imply a specific import path that may not match current package versions. Treat third-party framework snippets as conceptual patterns and validate exact SDK APIs before shipping.
-
-> ⚠️ **Transcript correction:** Guardrails are not only output validators. They must include inbound filtering, tool-call enforcement, and operational controls. Production posture requires all layers, not only one.
-
----
-
 ## Interview Q&A Anchors
 
 **Q: Why are prompts alone insufficient for enterprise safety?**
