@@ -21,11 +21,17 @@ def check_prerequisites():
 
 
 def evaluate_tool_call(tool_name: str, args: dict) -> tuple[bool, str]:
-    blocked_tools = {"send_email", "wire_transfer"}
-    if tool_name in blocked_tools:
-        return False, f"Blocked tool by policy: {tool_name}"
+    normalized = tool_name.strip().lower().replace("-", "_")
 
-    if tool_name == "lookup_ticket":
+    allowed_tools = {"lookup_ticket", "send_email"}
+    if normalized not in allowed_tools:
+        return False, f"Blocked unknown tool by policy: {tool_name}"
+
+    blocked_tools = {"send_email", "wire_transfer"}
+    if normalized in blocked_tools:
+        return False, f"Blocked high-risk tool by policy: {tool_name}"
+
+    if normalized == "lookup_ticket":
         ticket_id = args.get("ticket_id", "")
         if not isinstance(ticket_id, str) or not ticket_id.startswith("TCK-"):
             return False, "Blocked: ticket_id must be string with TCK- prefix"
@@ -40,6 +46,7 @@ def run_tests():
         ("lookup_ticket", {"ticket_id": "TCK-2222"}),
         ("lookup_ticket", {"ticket_id": 2222}),
         ("send_email", {"to": "ops@example.com", "body": "hello"}),
+        ("sendemailnow", {"to": "ops@example.com", "body": "hello"}),
     ]
 
     print("=" * 70)

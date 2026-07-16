@@ -60,13 +60,19 @@ class InputPolicyMiddleware(AgentMiddleware):
 class ToolPolicyMiddleware(AgentMiddleware):
     def wrap_tool_call(self, request, handler):
         tool_name = request.tool_call.get("name", "")
+        normalized_tool_name = tool_name.strip().lower().replace("-", "_")
         args = request.tool_call.get("args", {})
 
-        blocked_tools = {"send_email", "wire_transfer"}
-        if tool_name in blocked_tools:
-            raise ValueError(f"Blocked tool by policy: {tool_name}")
+        # Fail-closed policy: anything outside the allowlist is denied.
+        allowed_tools = {"lookup_ticket", "send_email"}
+        if normalized_tool_name not in allowed_tools:
+            raise ValueError(f"Blocked unknown tool by policy: {tool_name}")
 
-        if tool_name == "lookup_ticket":
+        high_risk_tools = {"send_email", "wire_transfer"}
+        if normalized_tool_name in high_risk_tools:
+            raise ValueError(f"Blocked high-risk tool by policy: {tool_name}")
+
+        if normalized_tool_name == "lookup_ticket":
             ticket_id = args.get("ticket_id", "")
             if not isinstance(ticket_id, str) or not ticket_id.startswith("TCK-"):
                 raise ValueError("Blocked tool call: ticket_id must be like 'TCK-1234'.")
@@ -80,12 +86,18 @@ def lookup_ticket(ticket_id: str) -> str:
     return f"Ticket {ticket_id}: status=OPEN, priority=MEDIUM"
 
 
+@tool
+def send_email(to: str, body: str) -> str:
+    """Send an email message."""
+    return f"Email queued for {to}."
+
+
 def build_agent():
     model = init_chat_model("openai:gpt-4o")
 
     return create_agent(
         model=model,
-        tools=[lookup_ticket],
+        tools=[lookup_ticket, send_email],
         middleware=[
             InputPolicyMiddleware(),
             PIIMiddleware("email", strategy="redact", apply_to_input=True),
